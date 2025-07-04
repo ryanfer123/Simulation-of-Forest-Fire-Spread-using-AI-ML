@@ -1,4 +1,4 @@
-# Forest Fire Simulation using ai-ml
+# Forest Fire Simulation using AI-ML
 
 This repository contains a comprehensive testing script for the `forestfire_sim.py` module, which performs AI/ML-based forest fire risk prediction and fire spread simulation.
 
@@ -14,29 +14,29 @@ The test suite (`test_forestfire_sim.py`) verifies the core functionalities of t
 
 ---
 
-## ✅ What It Tests
+## What It Tests
 
-1. **Module Importing**
+1. **Module Importing** 
    - Ensures `forestfire_sim.py` is importable
 
-2. **Data Collection**
+2. **Data Collection** 🗂️
    - Weather, terrain, LULC, human factors, and historical fire data
 
-3. **Preprocessing**
+3. **Preprocessing** ⚙️⚙️
    - Merges and splits datasets into train/validation/test sets
 
 4. **Model Creation**
    - Builds a lightweight ConvNet (instead of full U-NET) for testing purposes
 
-5. **Fire Spread Simulation**
+5. **Fire Spread Simulation** 🔥
    - Tests a reduced fire spread run in `testing_mode=True`
 
-6. **Visualization**
+6. **Visualization** 📊
    - Saves dummy prediction outputs, animations, and GeoTIFFs
 
 ---
 
-## 🧪 Running the Tests
+## Running the Tests ⚙️
 
 To run the tests:
 
