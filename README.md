@@ -1,1 +1,1 @@
-# Simulation-of-Forest-Fire-Spread-using-AI-ML-
+# Simulation of Forest Fire Spread using AI-ML
