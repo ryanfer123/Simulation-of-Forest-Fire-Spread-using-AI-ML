@@ -103,7 +103,7 @@ pip install -r requirements.txt
 
 📧 Contact
 
-Maintained by Ryan Fernandes
+Maintained by Ryan Fernandes.
 For queries, suggestions, or contributions, feel free to open an issue or pull request.
 
 ⸻
