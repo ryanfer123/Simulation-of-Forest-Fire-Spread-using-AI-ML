@@ -1,16 +1,33 @@
 # Forest Fire Simulation using AI-ML
 
-This repository contains a comprehensive testing script for the `forestfire_sim.py` module, which performs AI/ML-based forest fire risk prediction and fire spread simulation.
+This repository contains an AI/ML-based forest fire prediction and spread simulation system (`forestfire_sim.py`) and a comprehensive test suite (`test_forestfire_sim.py`) for it.
 
-The test suite (`test_forestfire_sim.py`) verifies the core functionalities of the simulation pipeline, including data collection, preprocessing, modeling, simulation, and visualization.
+The main script, `forestfire_sim.py`, performs the core prediction and simulation tasks, while `test_forestfire_sim.py` verifies its functionalities.
+
+---
+
+## 🚀 About `forestfire_sim.py`
+
+The main application script, `forestfire_sim.py`, implements an AI/ML-based forest fire prediction and spread simulation system. It includes:
+
+- Data collection (with synthetic data generation for standalone use).
+- Preprocessing of geospatial and temporal data.
+- A U-Net model for predicting fire probability for the next day.
+- A Cellular Automata model for simulating fire spread, optimized with Numba for performance.
+- Visualization of predictions and spread simulations.
+
+The script can be run in a `demo_mode` for quick demonstrations with smaller datasets and simplified model training.
 
 ---
 
 ## 📁 File Structure
 
-- `test_forestfire_sim.py` — Main testing script for `forestfire_sim.py`
-- `forestfire_sim.py` — (Expected) Implementation of the forest fire simulation and ML model
-- `test_output/` — Folder where test visualizations and GeoTIFFs are saved
+- `forestfire_sim.py` — Main script for AI/ML-based forest fire risk prediction and spread simulation.
+- `synthetic_data_generator.py` — Module for generating synthetic data for testing and demonstration.
+- `test_forestfire_sim.py` — Test suite for `forestfire_sim.py`.
+- `requirements.txt` — Lists Python package dependencies for the project.
+- `output/` — Default folder where simulation outputs (images, GeoTIFFs) from `forestfire_sim.py` are saved.
+- `test_output/` — Folder where test-specific visualizations and GeoTIFFs are saved by `test_forestfire_sim.py`.
 
 ---
 
@@ -20,7 +37,7 @@ The test suite (`test_forestfire_sim.py`) verifies the core functionalities of t
    - Ensures `forestfire_sim.py` is importable
 
 2. **Data Collection** 🗂️
-   - Weather, terrain, LULC, human factors, and historical fire data
+    -   Tests generation of synthetic weather, terrain, LULC, human factors, and historical fire data.
 
 3. **Preprocessing** ⚙️⚙️
    - Merges and splits datasets into train/validation/test sets
@@ -65,16 +82,21 @@ After execution, test artifacts are saved to the test_output/ directory:
 
 📌 Requirements
 
-Ensure the following Python packages are installed:
-	•	numpy
-	•	tensorflow
-	•	matplotlib (for visualizations)
-	•	rasterio (for GeoTIFF saving)
-	•	any other dependencies used inside forestfire_sim.py
+The primary Python packages required for this project are listed in `requirements.txt`.
+Key dependencies include:
+	•	`numpy` for numerical operations.
+	•	`tensorflow` for the U-Net prediction model.
+	•	`matplotlib` for visualizations.
+	•	`rasterio` for GeoTIFF handling.
+	•	`scikit-learn` for data splitting.
+	•	`numba` for accelerating the fire spread simulation.
+	•	`scipy` for utilities in data generation and simulation.
 
-Install with:
+It is recommended to install all dependencies using the `requirements.txt` file:
 
+```bash
 pip install -r requirements.txt
+```
 
 
 ⸻
