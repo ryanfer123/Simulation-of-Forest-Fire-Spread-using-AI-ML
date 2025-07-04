@@ -62,7 +62,8 @@ def test_preprocessing(weather_data, terrain_data, lulc_data, human_factors, his
 
     try:
         # Test data preprocessing
-        X, y = forestfire_sim.preprocess_data(weather_data, terrain_data, lulc_data, human_factors, historical_fires)
+        # preprocess_data now returns X, y, fuel_map
+        X, y, _ = forestfire_sim.preprocess_data(weather_data, terrain_data, lulc_data, human_factors, historical_fires)
         print(f"✓ Data preprocessing successful - X shape: {X.shape}, y shape: {y.shape}")
 
         # Test data splitting

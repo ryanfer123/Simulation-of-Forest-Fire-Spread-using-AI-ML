@@ -1,0 +1,7 @@
+numpy
+matplotlib
+rasterio
+scikit-learn
+tensorflow
+numba
+scipy
