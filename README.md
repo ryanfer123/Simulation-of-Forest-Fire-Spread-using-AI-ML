@@ -1,112 +1,206 @@
-# Forest Fire Simulation using AI-ML
+# Forest Fire Simulation using AI/ML
 
-This repository contains an AI/ML-based forest fire prediction and spread simulation system (`forestfire_sim.py`) and a comprehensive test suite (`test_forestfire_sim.py`) for it.
+An end-to-end prototype for **forest fire risk prediction and spread simulation**. The project combines synthetic geospatial data generation, raster preprocessing, a U-Net-style deep learning model, cellular automata fire-spread simulation, Numba acceleration, and visual outputs such as PNG maps, GeoTIFFs, and GIF animations.
 
-The main script, `forestfire_sim.py`, performs the core prediction and simulation tasks, while `test_forestfire_sim.py` verifies its functionalities.
-
----
-
-## 🚀 About `forestfire_sim.py`
-
-The main application script, `forestfire_sim.py`, implements an AI/ML-based forest fire prediction and spread simulation system. It includes:
-
-- Data collection (with synthetic data generation for standalone use).
-- Preprocessing of geospatial and temporal data.
-- A U-Net model for predicting fire probability for the next day.
-- A Cellular Automata model for simulating fire spread, optimized with Numba for performance.
-- Visualization of predictions and spread simulations.
-
-The script can be run in a `demo_mode` for quick demonstrations with smaller datasets and simplified model training.
+> **Current status:** In progress. The repository currently runs on synthetic geospatial data; real satellite/weather/fire datasets and benchmark metrics are planned next.
 
 ---
 
-## 📁 File Structure
+## Why this project is useful
 
-- `forestfire_sim.py` — Main script for AI/ML-based forest fire risk prediction and spread simulation.
-- `synthetic_data_generator.py` — Module for generating synthetic data for testing and demonstration.
-- `test_forestfire_sim.py` — Test suite for `forestfire_sim.py`.
-- `requirements.txt` — Lists Python package dependencies for the project.
-- `output/` — Default folder where simulation outputs (images, GeoTIFFs) from `forestfire_sim.py` are saved.
-- `test_output/` — Folder where test-specific visualizations and GeoTIFFs are saved by `test_forestfire_sim.py`.
+Forest fires are dynamic geospatial events influenced by weather, topography, land cover, fuel availability, and human activity. This project explores a two-stage ML system:
 
----
+1. **Next-day fire probability prediction** using stacked spatial features and a U-Net-style convolutional neural network.
+2. **Short-term fire spread simulation** from high-risk zones using cellular automata and environmental spread factors.
 
-## What It Tests
-
-1. **Module Importing** 
-   - Ensures `forestfire_sim.py` is importable
-
-2. **Data Collection** 🗂️
-    -   Tests generation of synthetic weather, terrain, LULC, human factors, and historical fire data.
-
-3. **Preprocessing** ⚙️⚙️
-   - Merges and splits datasets into train/validation/test sets
-
-4. **Model Creation**
-   - Builds a lightweight ConvNet (instead of full U-NET) for testing purposes
-
-5. **Fire Spread Simulation** 🔥
-   - Tests a reduced fire spread run in `testing_mode=True`
-
-6. **Visualization** 📊
-   - Saves dummy prediction outputs, animations, and GeoTIFFs
+This makes the project suitable as a portfolio demonstration for applied ML, geospatial AI, disaster-management analytics, and simulation-based decision support.
 
 ---
 
-## Running the Tests ⚙️
+## Core features
 
-To run the tests:
+- **Synthetic data pipeline** for standalone demonstrations.
+  - Weather: temperature, precipitation, humidity, wind speed, and wind direction.
+  - Terrain: DEM, slope, and aspect.
+  - LULC/fuel: land-use classes mapped to fuel availability.
+  - Human factors: settlement intensity and road proximity.
+  - Historical fires: daily fire masks for supervised training targets.
+- **Preprocessing pipeline** that stacks static and temporal raster layers into model-ready tensors.
+- **U-Net-style fire prediction model** for spatial binary/probability prediction.
+- **Cellular automata spread simulation** using fuel, wind, slope, temperature, and humidity.
+- **Numba-optimized simulation step** for faster spread updates in full simulation mode.
+- **Visualization/export support** for fire probability maps, fire-spread animations, and GeoTIFF outputs.
+- **Test workflow** that validates data generation, preprocessing, model creation, simplified simulation, and output writing.
+
+---
+
+## Repository structure
+
+| Path | Purpose |
+| --- | --- |
+| `forestfire_sim.py` | Main application: data loading/generation, preprocessing, model creation/training, prediction, spread simulation, and visualization. |
+| `synthetic_data_generator.py` | Synthetic raster data generator for weather, terrain, LULC, human factors, and historical fires. |
+| `test_forestfire_sim.py` | End-to-end smoke test for the workflow using reduced data and simplified model behavior. |
+| `requirements.txt` | Python dependencies required to run the project. |
+| `docs/application_summary.md` | Application-ready project summary and suggested form responses. |
+| `output/` | Example output artifacts from the main workflow. |
+| `test_output/` | Example output artifacts from the test workflow. |
+
+---
+
+## Dataset
+
+This repository **does not use COCO**. It currently uses a synthetic geospatial dataset generated by `synthetic_data_generator.py`.
+
+### Current dataset source
+
+- **Type:** Synthetic geospatial raster data.
+- **Region:** Defaults to Uttarakhand-style demonstration settings in the main script.
+- **Resolution:** 30 m grid resolution by default.
+- **Approximate size:**
+  - Test/demo regions: about `333 x 333` cells for a 10 km x 10 km synthetic region.
+  - Full synthetic runs: about `3333 x 3333` cells for a 100 km x 100 km synthetic region.
+- **Feature layers:** weather, terrain, aspect/slope, LULC-derived fuel, settlement, roads, and previous-day fire state.
+- **Target:** next-day fire/no-fire raster mask generated from synthetic historical fire data.
+
+### Planned real-world datasets
+
+Future versions should replace or augment synthetic data with:
+
+- VIIRS/MODIS active fire detections or burned-area products.
+- ERA5, IMD, or MOSDAC weather variables.
+- SRTM/ASTER/CartoDEM terrain data.
+- Bhuvan/Sentinel/Landsat land-use/land-cover products.
+- OpenStreetMap or GHSL settlement/road layers.
+
+---
+
+## Model and simulation approach
+
+### Prediction model
+
+The prediction component builds a U-Net-style convolutional neural network with:
+
+- encoder/downsampling convolution blocks,
+- a bottleneck with dropout,
+- decoder/upsampling blocks with skip connections,
+- a sigmoid output layer for fire probability prediction.
+
+### Spread simulation
+
+The spread component uses a cellular automata model. Each cell can ignite based on nearby burning cells and environmental conditions:
+
+- fuel availability,
+- wind speed and direction,
+- terrain slope and aspect,
+- temperature,
+- humidity.
+
+The full simulation path uses Numba JIT compilation to accelerate repeated spread steps.
+
+---
+
+## Metrics and evaluation status
+
+Quantitative benchmark metrics are **not finalized yet** because the current version uses synthetic fire masks and demo-oriented training.
+
+Recommended metrics for the next evaluation milestone:
+
+| Task | Metrics |
+| --- | --- |
+| Fire probability prediction | Precision, Recall, F1 Score, ROC-AUC, PR-AUC, IoU/Dice, confusion matrix |
+| Spatial segmentation quality | Pixel IoU, Dice coefficient, false-positive/false-negative fire area |
+| Spread simulation | Burned-area overlap, perimeter error, spread-distance error, time-to-ignition error |
+| Runtime/scalability | simulation seconds per timestep, memory usage by grid size |
+
+When submitting this project in an application form, avoid inventing results. A truthful metric entry is:
+
+> Prototype stage: end-to-end pipeline validated on synthetic data; quantitative metrics are pending real-data benchmarking. Planned metrics include F1 Score, IoU, Precision/Recall, ROC-AUC, and burned-area overlap.
+
+---
+
+## Setup
+
+Create and activate a virtual environment, then install dependencies:
 
 ```bash
-python test_forestfire_sim.py
-
-⚠️ Ensure that forestfire_sim.py exists in the same directory or Python path.
-
-⸻
-
-🗂️ Outputs
-
-After execution, test artifacts are saved to the test_output/ directory:
-	•	test_prediction.png — Predicted fire risk map
-	•	test_animation.gif — Animated fire spread
-	•	test_prediction.tif — GeoTIFF output of prediction
-
-⸻
-
-⚠️ Notes
-	•	This test suite uses reduced date ranges and simplified models for fast, non-resource-intensive testing.
-	•	Large models and long simulations are skipped or mocked using testing_mode=True.
-	•	File outputs >50 MB may trigger GitHub LFS warnings. Consider using Git LFS if needed.
-
-⸻
-
-📌 Requirements
-
-The primary Python packages required for this project are listed in `requirements.txt`.
-Key dependencies include:
-	•	`numpy` for numerical operations.
-	•	`tensorflow` for the U-Net prediction model.
-	•	`matplotlib` for visualizations.
-	•	`rasterio` for GeoTIFF handling.
-	•	`scikit-learn` for data splitting.
-	•	`numba` for accelerating the fire spread simulation.
-	•	`scipy` for utilities in data generation and simulation.
-
-It is recommended to install all dependencies using the `requirements.txt` file:
-
-```bash
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-
-⸻
-
-📧 Contact
-
-Maintained by Ryan Fernandes.
-For queries, suggestions, or contributions, feel free to open an issue or pull request.
-
-⸻
-
+> TensorFlow, Rasterio, and Numba can take time to install depending on platform and Python version.
 
 ---
+
+## Run the demo
+
+The main script runs in demo mode by default for faster execution and lower memory usage:
+
+```bash
+python forestfire_sim.py
+```
+
+Expected outputs are written to `output/`, including prediction maps, fire-spread GeoTIFFs, and an animation placeholder or GIF depending on mode.
+
+---
+
+## Run tests
+
+```bash
+python test_forestfire_sim.py
+```
+
+The test script validates:
+
+1. module import,
+2. synthetic data collection,
+3. preprocessing and train/validation/test splitting,
+4. simplified model creation,
+5. simplified fire spread simulation,
+6. PNG/GIF/GeoTIFF output writing.
+
+Test artifacts are written to `test_output/`.
+
+---
+
+## Suggested application form summary
+
+Use the shorter, application-ready summary in [`docs/application_summary.md`](docs/application_summary.md). It includes suggested answers for:
+
+- project title,
+- domain,
+- project type,
+- datasets and approximate size,
+- key metrics,
+- components built,
+- progress status,
+- repository/demo link wording.
+
+---
+
+## Limitations
+
+- Real data download/integration paths are currently placeholders.
+- Current metrics are not benchmarked against real fire events.
+- Synthetic fire generation is useful for pipeline validation but not a substitute for operational validation.
+- Demo/test modes intentionally simplify or skip expensive training and visualization steps.
+- Some generated output artifacts may be large and should be managed carefully with Git LFS or ignored in future cleanup.
+
+---
+
+## Roadmap
+
+- [ ] Add real fire occurrence data ingestion.
+- [ ] Add deterministic experiment configuration and random seeds.
+- [ ] Add training/evaluation scripts with saved metrics.
+- [ ] Add a small sample dataset for reproducible CI tests.
+- [ ] Add visual examples to the README.
+- [ ] Add model cards or experiment reports.
+- [ ] Add a lightweight web demo or notebook walkthrough.
+
+---
+
+## Maintainer
+
+Maintained by Ryan Fernandes. Contributions, suggestions, and issues are welcome.
