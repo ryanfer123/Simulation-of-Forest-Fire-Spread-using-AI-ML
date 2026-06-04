@@ -1,6 +1,6 @@
 # Forest Fire Simulation using AI/ML
 
-An end-to-end prototype for **forest fire risk prediction and spread simulation**. The project combines synthetic geospatial data generation, raster preprocessing, a U-Net-style deep learning model, cellular automata fire-spread simulation, Numba acceleration, and visual outputs such as PNG maps, GeoTIFFs, and GIF animations.
+An end-to-end prototype for **forest fire risk prediction and spread simulation**. The project combines synthetic geospatial data generation, raster preprocessing, a U-Net-style deep learning model, cellular automata fire-spread simulation, Numba acceleration, and visual outputs such as PNG maps, GeoTIFFs, GIF animations, and a modern **Next.js Interactive Dashboard**.
 
 > **Current status:** In progress. The repository currently runs on synthetic geospatial data; real satellite/weather/fire datasets and benchmark metrics are planned next.
 
@@ -30,6 +30,7 @@ This makes the project suitable as a portfolio demonstration for applied ML, geo
 - **Cellular automata spread simulation** using fuel, wind, slope, temperature, and humidity.
 - **Numba-optimized simulation step** for faster spread updates in full simulation mode.
 - **Visualization/export support** for fire probability maps, fire-spread animations, and GeoTIFF outputs.
+- **Interactive Next.js Web Dashboard** for monitoring simulated fire spread, toggling map layers, viewing evaluation metrics, and exporting data.
 - **Test workflow** that validates data generation, preprocessing, model creation, simplified simulation, and output writing.
 
 ---
@@ -41,6 +42,7 @@ This makes the project suitable as a portfolio demonstration for applied ML, geo
 | `forestfire_sim.py` | Main application: data loading/generation, preprocessing, model creation/training, prediction, spread simulation, and visualization. |
 | `synthetic_data_generator.py` | Synthetic raster data generator for weather, terrain, LULC, human factors, and historical fires. |
 | `test_forestfire_sim.py` | End-to-end smoke test for the workflow using reduced data and simplified model behavior. |
+| `dashboard/` | Next.js interactive web interface for visualizing simulation results, maps, and metrics. |
 | `requirements.txt` | Python dependencies required to run the project. |
 | `docs/application_summary.md` | Application-ready project summary and suggested form responses. |
 | `output/` | Example output artifacts from the main workflow. |
@@ -145,6 +147,20 @@ Expected outputs are written to `output/`, including prediction maps, fire-sprea
 
 ---
 
+## Run the Web Dashboard
+
+The project includes an interactive Next.js web application interface:
+
+```bash
+cd dashboard
+npm install
+npm run dev
+```
+
+Then open `http://localhost:3000` in your browser to view the simulated risk zones and evaluate real-time metrics.
+
+---
+
 ## Run tests
 
 ```bash
@@ -197,7 +213,7 @@ Use the shorter, application-ready summary in [`docs/application_summary.md`](do
 - [ ] Add a small sample dataset for reproducible CI tests.
 - [ ] Add visual examples to the README.
 - [ ] Add model cards or experiment reports.
-- [ ] Add a lightweight web demo or notebook walkthrough.
+- [x] Add a lightweight web demo or notebook walkthrough.
 
 ---
 
