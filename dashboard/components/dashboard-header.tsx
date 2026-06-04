@@ -8,7 +8,6 @@ interface Props {
 
 export default function DashboardHeader({ simulationActive }: Props) {
   const [time, setTime] = useState<string>("");
-  const [modelStatus, setModelStatus] = useState("ONLINE");
 
   useEffect(() => {
     const update = () =>
@@ -26,122 +25,74 @@ export default function DashboardHeader({ simulationActive }: Props) {
   }, []);
 
   return (
-    <header className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-card shrink-0">
+    <header style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "10px 20px",
+      borderBottom: "1px solid var(--border)",
+      background: "var(--bg-card)",
+      flexShrink: 0,
+    }}>
       {/* Brand */}
-      <div className="flex items-center gap-3">
-        {/* Fire icon mark */}
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-          <rect width="28" height="28" rx="7" fill="oklch(0.58 0.24 27)" opacity="0.15" />
+      <div className="flex-center gap-3">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <rect width="32" height="32" rx="8" fill="var(--danger)" opacity="0.15" />
           <path
-            d="M14 4C14 4 10 9 10 13C10 15.2 11.4 17 13 17.5C12.5 16 13 14 14 13C15 15 15.5 16 15 17.5C16.6 17 18 15.2 18 13C18 9 14 4 14 4Z"
-            fill="oklch(0.68 0.21 40)"
+            d="M16 5C16 5 11.5 10.5 11.5 15C11.5 17.5 13 19.5 15 20C14.4 18.2 15 15.8 16 14.5C17 16 17.6 17.5 17 20C18.8 19.5 20.5 17.5 20.5 15C20.5 10.5 16 5 16 5Z"
+            fill="var(--accent)"
           />
           <path
-            d="M14 18C14 18 11 20 11 22C11 23.1 12.3 24 14 24C15.7 24 17 23.1 17 22C17 20 14 18 14 18Z"
-            fill="oklch(0.58 0.24 27)"
+            d="M16 20.5C16 20.5 13.5 22.5 13.5 24.5C13.5 25.7 14.6 27 16 27C17.4 27 18.5 25.7 18.5 24.5C18.5 22.5 16 20.5 16 20.5Z"
+            fill="var(--danger)"
           />
         </svg>
         <div>
-          <h1 className="text-sm font-mono font-bold text-foreground tracking-tight">PyroSense</h1>
-          <p className="text-[9px] font-mono text-muted-foreground tracking-widest uppercase">
+          <h1 className="mono" style={{ fontSize: 15, fontWeight: 700, color: "var(--fg)", letterSpacing: "-0.02em" }}>
+            PyroSense
+          </h1>
+          <p className="mono" style={{ fontSize: 9.5, color: "var(--fg-dim)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
             AI Forest Fire Prediction
           </p>
         </div>
       </div>
 
       {/* Center status pills */}
-      <div className="hidden md:flex items-center gap-2">
-        <StatusPill
-          label="ALERT LEVEL"
-          value="RED"
-          color="oklch(0.58 0.24 27)"
-          pulse
-        />
-        <StatusPill
-          label="ACTIVE ZONES"
-          value="8"
-          color="oklch(0.68 0.21 40)"
-        />
-        <StatusPill
-          label="SIMULATION"
-          value={simulationActive ? "RUNNING" : "PAUSED"}
-          color={simulationActive ? "oklch(0.50 0.12 145)" : "oklch(0.55 0.01 60)"}
-          pulse={simulationActive}
-        />
-        <StatusPill
-          label="MODEL"
-          value={modelStatus}
-          color="oklch(0.50 0.12 145)"
-        />
+      <div className="flex-center gap-2" style={{ display: "flex" }}>
+        <span className="pill pill--danger">
+          <span className="pulse-dot" style={{ color: "var(--danger)" }} />
+          ALERT LEVEL <strong>RED</strong>
+        </span>
+        <span className="pill pill--accent">
+          ACTIVE ZONES <strong>8</strong>
+        </span>
+        <span className={simulationActive ? "pill pill--success" : "pill pill--muted"}>
+          {simulationActive && <span className="pulse-dot" style={{ color: "var(--success)" }} />}
+          SIMULATION <strong>{simulationActive ? "RUNNING" : "PAUSED"}</strong>
+        </span>
+        <span className="pill pill--success">
+          MODEL <strong>ONLINE</strong>
+        </span>
       </div>
 
-      {/* Right: time & region */}
-      <div className="flex items-center gap-4">
-        <div className="hidden lg:flex flex-col items-end">
-          <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-widest">Region</span>
-          <span className="text-xs font-mono text-foreground">Uttarakhand, IN</span>
-          <span className="text-[8px] font-mono text-muted-foreground tabular-nums">
-            77.0&ndash;81.5&deg;E &nbsp; 28.5&ndash;31.5&deg;N
+      {/* Right side */}
+      <div className="flex-center gap-4">
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+          <span className="mono" style={{ fontSize: 9, color: "var(--fg-dim)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Region</span>
+          <span className="mono" style={{ fontSize: 12, color: "var(--fg)", fontWeight: 500 }}>Uttarakhand, IN</span>
+          <span className="mono" style={{ fontSize: 8, color: "var(--fg-dim)", fontVariantNumeric: "tabular-nums" }}>
+            77.0–81.5°E &nbsp; 28.5–31.5°N
           </span>
         </div>
-        <div className="flex flex-col items-end">
-          <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-widest">UTC</span>
-          <span className="text-xs font-mono text-foreground tabular-nums">{time}</span>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+          <span className="mono" style={{ fontSize: 9, color: "var(--fg-dim)", letterSpacing: "0.12em", textTransform: "uppercase" }}>UTC</span>
+          <span className="mono" style={{ fontSize: 13, color: "var(--fg)", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{time}</span>
         </div>
-        <div
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded border text-[10px] font-mono font-semibold"
-          style={{
-            background: "oklch(0.58 0.24 27)/10",
-            borderColor: "oklch(0.58 0.24 27)/40",
-            color: "oklch(0.58 0.24 27)",
-          }}
-        >
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[oklch(0.58_0.24_27)] opacity-60" />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[oklch(0.58_0.24_27)]" />
-          </span>
+        <span className="pill pill--danger" style={{ fontSize: 11 }}>
+          <span className="pulse-dot" style={{ color: "var(--danger)" }} />
           LIVE
-        </div>
+        </span>
       </div>
     </header>
-  );
-}
-
-function StatusPill({
-  label,
-  value,
-  color,
-  pulse = false,
-}: {
-  label: string;
-  value: string;
-  color: string;
-  pulse?: boolean;
-}) {
-  return (
-    <div
-      className="flex items-center gap-1.5 px-2.5 py-1 rounded border"
-      style={{
-        background: `${color}12`,
-        borderColor: `${color}35`,
-      }}
-    >
-      {pulse && (
-        <span className="relative flex h-1.5 w-1.5">
-          <span
-            className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60"
-            style={{ background: color }}
-          />
-          <span
-            className="relative inline-flex rounded-full h-1.5 w-1.5"
-            style={{ background: color }}
-          />
-        </span>
-      )}
-      <span className="text-[8.5px] font-mono text-muted-foreground uppercase tracking-wider">{label}</span>
-      <span className="text-[10px] font-mono font-bold" style={{ color }}>
-        {value}
-      </span>
-    </div>
   );
 }

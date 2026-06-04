@@ -11,5 +11,5 @@ python3 run_firms_benchmark.py
 echo ""
 echo "2. Starting Interactive Dashboard..."
 cd dashboard
-npm install
+npm install --legacy-peer-deps
 npm run dev

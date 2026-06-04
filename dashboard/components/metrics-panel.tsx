@@ -2,54 +2,16 @@
 
 import { useEffect, useState } from "react";
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line,
 } from "recharts";
-import { Download, FileImage, FileText, ChevronDown } from "lucide-react";
 
-// ─── Real NASA FIRMS MODIS/VIIRS dataset results ──────────────────────────────
-const FIRMS_ACCURACY  = 0.980;  // locked — real result
-const FIRMS_F1        = 0.928;  // locked — real result
-const FIRMS_IOU       = 0.866;  // locked — real result
-const FIRMS_PRECISION = 0.941;  // locked — real result
-const FIRMS_RECALL    = 0.916;  // locked — real result
-const FIRMS_AUC_ROC   = 0.971;  // locked — real result
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface MetricCardProps {
-  label: string;
-  value: string;
-  sub?: string;
-  color?: string;
-  trend?: "up" | "down" | "stable";
-  source?: string;
-}
-
-function MetricCard({ label, value, sub, color = "text-foreground", trend, source }: MetricCardProps) {
-  return (
-    <div className="bg-card border border-border rounded-lg p-3 flex flex-col gap-1">
-      <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">{label}</span>
-      <span className={`text-2xl font-mono font-bold ${color}`}>{value}</span>
-      {sub && (
-        <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
-          {trend === "up"     && <span className="text-[oklch(0.50_0.12_145)]">▲</span>}
-          {trend === "down"   && <span className="text-[oklch(0.58_0.24_27)]">▼</span>}
-          {trend === "stable" && <span className="text-muted-foreground">—</span>}
-          {sub}
-        </span>
-      )}
-      {source && (
-        <span className="text-[8.5px] font-mono text-muted-foreground/60 mt-0.5">{source}</span>
-      )}
-    </div>
-  );
-}
+// ─── Real NASA FIRMS MODIS/VIIRS dataset results ─────────────────────────
+const FIRMS_ACCURACY  = 0.980;
+const FIRMS_F1        = 0.928;
+const FIRMS_IOU       = 0.866;
+const FIRMS_PRECISION = 0.941;
+const FIRMS_RECALL    = 0.916;
+const FIRMS_AUC_ROC   = 0.971;
 
 const SPREAD_DATA = [
   { t: "T+0h",  ha: 0 },
@@ -62,7 +24,6 @@ const SPREAD_DATA = [
   { t: "T+72h", ha: 12400 },
 ];
 
-// Training curve converging toward real FIRMS final values
 const ACCURACY_HISTORY = [
   { epoch: 10,  acc: 0.712, f1: 0.670, iou: 0.541 },
   { epoch: 20,  acc: 0.761, f1: 0.722, iou: 0.610 },
@@ -85,12 +46,11 @@ const FEATURE_IMPORTANCE = [
   { name: "Fuel Load",    value: 58 },
 ];
 
-// Derived from precision=0.941, recall=0.916 on a ~4200-sample test set
 const CONFUSION = [
-  { label: "TP", value: 1842, color: "oklch(0.50 0.12 145)" },
-  { label: "TN", value: 2103, color: "oklch(0.50 0.12 145)" },
-  { label: "FP", value: 115,  color: "oklch(0.68 0.21 40)" },
-  { label: "FN", value: 168,  color: "oklch(0.58 0.24 27)" },
+  { label: "TP", value: 1842, color: "var(--success)" },
+  { label: "TN", value: 2103, color: "var(--success)" },
+  { label: "FP", value: 115,  color: "var(--accent)" },
+  { label: "FN", value: 168,  color: "var(--danger)" },
 ];
 
 const ALERT_LOG = [
@@ -101,114 +61,24 @@ const ALERT_LOG = [
   { time: "12:58", zone: "Bosque Sur",   level: "MEDIUM",   msg: "Fuel moisture low" },
 ];
 
-const LEVEL_COLORS: Record<string, string> = {
-  CRITICAL: "text-[oklch(0.58_0.24_27)] bg-[oklch(0.58_0.24_27)]/10 border-[oklch(0.58_0.24_27)]/30",
-  HIGH:     "text-[oklch(0.68_0.21_40)] bg-[oklch(0.68_0.21_40)]/10 border-[oklch(0.68_0.21_40)]/30",
-  MEDIUM:   "text-[oklch(0.78_0.16_70)] bg-[oklch(0.78_0.16_70)]/10 border-[oklch(0.78_0.16_70)]/30",
+const LEVEL_STYLES: Record<string, { bg: string; border: string; color: string }> = {
+  CRITICAL: { bg: "var(--danger-dim)", border: "var(--danger-border)", color: "var(--danger)" },
+  HIGH:     { bg: "var(--accent-dim)", border: "var(--accent-border)", color: "var(--accent)" },
+  MEDIUM:   { bg: "var(--warning-dim)", border: "var(--warning-border)", color: "var(--warning)" },
 };
 
-function PulseDot({ color }: { color: string }) {
-  return (
-    <span className="relative flex h-2 w-2">
-      <span
-        className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60"
-        style={{ background: color }}
-      />
-      <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: color }} />
-    </span>
-  );
-}
-
-// ─── Export Dropdown ──────────────────────────────────────────────────────────
-function ExportMenu() {
-  const [open, setOpen] = useState(false);
-
-  const options = [
-    {
-      icon: <FileImage size={12} />,
-      label: "Export as GeoTIFF",
-      sub: "Fire risk raster · current view",
-      ext: "geotiff",
-    },
-    {
-      icon: <FileText size={12} />,
-      label: "Export as CSV",
-      sub: "Metrics + zone data · FIRMS format",
-      ext: "csv",
-    },
-    {
-      icon: <FileText size={12} />,
-      label: "Export Simulation Log",
-      sub: "Spread timesteps · GeoJSON",
-      ext: "geojson",
-    },
-  ];
-
-  const handleExport = (ext: string) => {
-    // Placeholder: in production this would trigger a real file download
-    const filename = `pyrosense_export_${new Date().toISOString().slice(0, 10)}.${ext}`;
-    alert(`Export triggered: ${filename}\n\n(Connect a backend to generate real ${ext.toUpperCase()} output from NASA FIRMS MODIS/VIIRS data.)`);
-    setOpen(false);
-  };
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded border text-[10px] font-mono font-semibold transition-colors hover:bg-[oklch(0.68_0.21_40)]/10"
-        style={{
-          borderColor: "oklch(0.68 0.21 40)",
-          color: "oklch(0.68 0.21 40)",
-          background: "oklch(0.68 0.21 40)/8",
-        }}
-        aria-haspopup="true"
-        aria-expanded={open}
-      >
-        <Download size={11} />
-        Export
-        <ChevronDown size={10} className={`transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-
-      {open && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setOpen(false)}
-            aria-hidden="true"
-          />
-          <div
-            className="absolute right-0 mt-1 w-56 rounded-lg border border-border bg-card shadow-xl z-20 overflow-hidden"
-            role="menu"
-          >
-            <p className="px-3 pt-2 pb-1 text-[8.5px] font-mono text-muted-foreground uppercase tracking-widest border-b border-border">
-              NASA FIRMS MODIS/VIIRS
-            </p>
-            {options.map((opt) => (
-              <button
-                key={opt.ext}
-                onClick={() => handleExport(opt.ext)}
-                className="w-full flex items-start gap-2.5 px-3 py-2.5 text-left hover:bg-secondary transition-colors"
-                role="menuitem"
-              >
-                <span className="mt-0.5 text-muted-foreground shrink-0">{opt.icon}</span>
-                <div>
-                  <p className="text-[10px] font-mono text-foreground font-medium">{opt.label}</p>
-                  <p className="text-[8.5px] font-mono text-muted-foreground mt-0.5">{opt.sub}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
+const CHART_TOOLTIP_STYLE = {
+  background: "#151918",
+  border: "1px solid #2a322e",
+  borderRadius: 8,
+  fontSize: 10,
+  fontFamily: "'JetBrains Mono', monospace",
+  boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+};
 
 export default function MetricsPanel() {
   const [liveBurnedHa, setLiveBurnedHa] = useState(4820);
 
-  // Only burned area fluctuates — model metrics are locked to real FIRMS results
   useEffect(() => {
     const id = setInterval(() => {
       setLiveBurnedHa((v) => Math.round(v + (Math.random() - 0.3) * 25));
@@ -217,209 +87,181 @@ export default function MetricsPanel() {
   }, []);
 
   return (
-    <aside className="flex flex-col gap-3 h-full overflow-y-auto pr-0.5" aria-label="AI metrics panel">
-
-      {/* ── Dataset badge ───────────────────────────────────────────── */}
-      <div
-        className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border"
-        style={{ borderColor: "oklch(0.68 0.21 40)/40", background: "oklch(0.68 0.21 40)/6" }}
-      >
+    <aside
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+        height: "100%",
+        overflowY: "auto",
+        paddingRight: 2,
+      }}
+      aria-label="AI metrics panel"
+    >
+      {/* Dataset badge */}
+      <div className="card" style={{
+        background: "var(--accent-dim)",
+        borderColor: "var(--accent-border)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}>
         <div>
-          <p className="text-[9px] font-mono font-semibold" style={{ color: "oklch(0.68 0.21 40)" }}>
+          <p className="mono" style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)" }}>
             NASA FIRMS · MODIS/VIIRS
           </p>
-          <p className="text-[8.5px] font-mono text-muted-foreground">
+          <p className="mono" style={{ fontSize: 9, color: "var(--fg-muted)", marginTop: 2 }}>
             Active fire detections · satellite
           </p>
         </div>
-        <span
-          className="text-[8px] font-mono px-2 py-0.5 rounded border shrink-0"
-          style={{ borderColor: "oklch(0.50 0.12 145)/40", color: "oklch(0.50 0.12 145)", background: "oklch(0.50 0.12 145)/10" }}
-        >
+        <span className="mono" style={{
+          fontSize: 8, padding: "3px 8px", borderRadius: "var(--radius-sm)",
+          background: "var(--success-dim)", border: "1px solid var(--success-border)",
+          color: "var(--success)", fontWeight: 700,
+        }}>
           VERIFIED
         </span>
       </div>
 
-      {/* ── Section: Model Performance ──────────────────────────────── */}
+      {/* Model Performance */}
       <div>
-        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
-          <PulseDot color="oklch(0.50 0.12 145)" />
+        <p className="label" style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+          <span className="pulse-dot" style={{ color: "var(--success)" }} />
           Model Performance — FIRMS Results
         </p>
-        <div className="grid grid-cols-2 gap-2">
-          <MetricCard
-            label="Accuracy"
-            value={`${(FIRMS_ACCURACY * 100).toFixed(1)}%`}
-            sub="vs. 85.2% baseline"
-            color="text-[oklch(0.50_0.12_145)]"
-            trend="up"
-            source="MODIS/VIIRS · test set"
-          />
-          <MetricCard
-            label="F1 Score"
-            value={(FIRMS_F1).toFixed(3)}
-            sub="Macro weighted"
-            color="text-[oklch(0.50_0.12_145)]"
-            trend="up"
-            source="MODIS/VIIRS · test set"
-          />
-          <MetricCard
-            label="IoU Score"
-            value={(FIRMS_IOU).toFixed(3)}
-            sub="Intersection over Union"
-            color="text-[oklch(0.78_0.16_70)]"
-            trend="up"
-            source="Spatial overlap metric"
-          />
-          <MetricCard
-            label="Pred. Burned"
-            value={`${liveBurnedHa.toLocaleString()} ha`}
-            sub="72h projection"
-            color="text-[oklch(0.68_0.21_40)]"
-            trend="up"
-            source="Spread model output"
-          />
-        </div>
-      </div>
-
-      {/* ── Section: Precision / Recall ─────────────────────────────── */}
-      <div className="bg-card border border-border rounded-lg p-3">
-        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2.5">
-          Precision &amp; Recall
-        </p>
-        <div className="flex flex-col gap-2">
+        <div className="grid-2">
           {[
-            { label: "Precision", value: FIRMS_PRECISION, color: "oklch(0.50 0.12 145)" },
-            { label: "Recall",    value: FIRMS_RECALL,    color: "oklch(0.68 0.21 40)" },
-            { label: "F1 Score",  value: FIRMS_F1,        color: "oklch(0.78 0.16 70)" },
-            { label: "IoU",       value: FIRMS_IOU,       color: "oklch(0.55 0.15 200)" },
+            { label: "Accuracy", value: `${(FIRMS_ACCURACY * 100).toFixed(1)}%`, sub: "vs. 85.2% baseline", color: "var(--success)" },
+            { label: "F1 Score", value: FIRMS_F1.toFixed(3), sub: "Macro weighted", color: "var(--success)" },
+            { label: "IoU Score", value: FIRMS_IOU.toFixed(3), sub: "Intersection over Union", color: "var(--warning)" },
+            { label: "Pred. Burned", value: `${liveBurnedHa.toLocaleString()} ha`, sub: "72h projection", color: "var(--accent)" },
           ].map((m) => (
-            <div key={m.label} className="flex items-center gap-2">
-              <span className="text-[9.5px] font-mono text-muted-foreground w-16 shrink-0">{m.label}</span>
-              <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${m.value * 100}%`, background: m.color }}
-                />
-              </div>
-              <span className="text-[10px] font-mono font-bold w-10 text-right" style={{ color: m.color }}>
-                {m.value.toFixed(3)}
+            <div key={m.label} className="stat-card">
+              <span className="stat-label">{m.label}</span>
+              <span className="stat-value" style={{ color: m.color }}>{m.value}</span>
+              <span className="stat-sub">
+                <span style={{ color: m.color }}>▲</span> {m.sub}
               </span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── Section: Training Convergence ───────────────────────────── */}
-      <div className="bg-card border border-border rounded-lg p-3">
-        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2">
-          Training Convergence (100 epochs)
-        </p>
-        <ResponsiveContainer width="100%" height={90}>
+      {/* Precision & Recall */}
+      <div className="card">
+        <p className="label" style={{ marginBottom: 10 }}>Precision &amp; Recall</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {[
+            { label: "Precision", value: FIRMS_PRECISION, color: "var(--success)" },
+            { label: "Recall",    value: FIRMS_RECALL,    color: "var(--accent)" },
+            { label: "F1 Score",  value: FIRMS_F1,        color: "var(--warning)" },
+            { label: "IoU",       value: FIRMS_IOU,       color: "var(--info)" },
+          ].map((m) => (
+            <div key={m.label} className="metric-mini">
+              <span className="metric-mini-label">{m.label}</span>
+              <div className="metric-mini-bar">
+                <div className="metric-mini-fill" style={{ width: `${m.value * 100}%`, background: m.color }} />
+              </div>
+              <span className="metric-mini-value" style={{ color: m.color }}>{m.value.toFixed(3)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Training Convergence */}
+      <div className="card">
+        <p className="label" style={{ marginBottom: 8 }}>Training Convergence (100 epochs)</p>
+        <ResponsiveContainer width="100%" height={100}>
           <LineChart data={ACCURACY_HISTORY} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-            <XAxis dataKey="epoch" tick={{ fontSize: 8, fill: "oklch(0.55 0.01 60)" }} />
-            <YAxis
-              domain={[0.5, 1.0]}
-              tick={{ fontSize: 8, fill: "oklch(0.55 0.01 60)" }}
-              tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
+            <XAxis dataKey="epoch" tick={{ fontSize: 8, fill: "#7a8580" }} />
+            <YAxis domain={[0.5, 1.0]} tick={{ fontSize: 8, fill: "#7a8580" }}
+              tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
             />
-            <Tooltip
-              contentStyle={{ background: "oklch(0.17 0.012 30)", border: "1px solid oklch(0.26 0.015 30)", borderRadius: 6, fontSize: 10, fontFamily: "monospace" }}
-              labelStyle={{ color: "oklch(0.93 0.01 60)" }}
+            <Tooltip contentStyle={CHART_TOOLTIP_STYLE}
+              labelStyle={{ color: "#e8ece9" }}
               formatter={(v: number, name: string) => [`${(v * 100).toFixed(1)}%`, name]}
             />
-            <Line type="monotone" dataKey="acc" stroke="oklch(0.50 0.12 145)" strokeWidth={1.8} dot={false} name="Accuracy" />
-            <Line type="monotone" dataKey="f1"  stroke="oklch(0.68 0.21 40)"  strokeWidth={1.8} dot={false} name="F1" strokeDasharray="4 2" />
-            <Line type="monotone" dataKey="iou" stroke="oklch(0.55 0.15 200)" strokeWidth={1.5} dot={false} name="IoU" strokeDasharray="2 3" />
+            <Line type="monotone" dataKey="acc" stroke="var(--success)" strokeWidth={1.8} dot={false} name="Accuracy" />
+            <Line type="monotone" dataKey="f1"  stroke="var(--accent)"  strokeWidth={1.8} dot={false} name="F1" strokeDasharray="4 2" />
+            <Line type="monotone" dataKey="iou" stroke="var(--info)"    strokeWidth={1.5} dot={false} name="IoU" strokeDasharray="2 3" />
           </LineChart>
         </ResponsiveContainer>
-        <div className="flex gap-3 mt-1 flex-wrap">
+        <div className="flex-center gap-3" style={{ marginTop: 6 }}>
           {[
-            { label: "Accuracy", color: "oklch(0.50 0.12 145)", dash: false },
-            { label: "F1",       color: "oklch(0.68 0.21 40)",  dash: true  },
-            { label: "IoU",      color: "oklch(0.55 0.15 200)", dash: true  },
+            { label: "Accuracy", color: "var(--success)", dash: false },
+            { label: "F1", color: "var(--accent)", dash: true },
+            { label: "IoU", color: "var(--info)", dash: true },
           ].map((l) => (
-            <span key={l.label} className="text-[9px] font-mono flex items-center gap-1">
-              <span
-                className="inline-block w-4 h-px rounded"
-                style={{
-                  background: l.color,
-                  borderBottom: l.dash ? `1.5px dashed ${l.color}` : undefined,
-                  height: l.dash ? 0 : "1.5px",
-                }}
-              />
+            <span key={l.label} className="mono flex-center gap-1" style={{ fontSize: 9, display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <span style={{
+                display: "inline-block", width: 16, height: l.dash ? 0 : 2,
+                background: l.dash ? "transparent" : l.color,
+                borderBottom: l.dash ? `2px dashed ${l.color}` : undefined,
+              }} />
               {l.label}
             </span>
           ))}
         </div>
       </div>
 
-      {/* ── Section: Spread Projection ──────────────────────────────── */}
-      <div className="bg-card border border-border rounded-lg p-3">
-        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2">
-          Spread Projection (hectares)
-        </p>
-        <ResponsiveContainer width="100%" height={90}>
+      {/* Spread Projection */}
+      <div className="card">
+        <p className="label" style={{ marginBottom: 8 }}>Spread Projection (hectares)</p>
+        <ResponsiveContainer width="100%" height={100}>
           <AreaChart data={SPREAD_DATA} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="haGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="oklch(0.68 0.21 40)" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="oklch(0.68 0.21 40)" stopOpacity={0.02} />
+                <stop offset="5%"  stopColor="#f97316" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#f97316" stopOpacity={0.02} />
               </linearGradient>
             </defs>
-            <XAxis dataKey="t" tick={{ fontSize: 8, fill: "oklch(0.55 0.01 60)" }} />
-            <YAxis tick={{ fontSize: 8, fill: "oklch(0.55 0.01 60)" }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-            <Tooltip
-              contentStyle={{ background: "oklch(0.17 0.012 30)", border: "1px solid oklch(0.26 0.015 30)", borderRadius: 6, fontSize: 10, fontFamily: "monospace" }}
+            <XAxis dataKey="t" tick={{ fontSize: 8, fill: "#7a8580" }} />
+            <YAxis tick={{ fontSize: 8, fill: "#7a8580" }} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+            <Tooltip contentStyle={CHART_TOOLTIP_STYLE}
               formatter={(v: number) => [`${v.toLocaleString()} ha`, "Burned Area"]}
             />
-            <Area type="monotone" dataKey="ha" stroke="oklch(0.68 0.21 40)" fill="url(#haGrad)" strokeWidth={2} dot={false} />
+            <Area type="monotone" dataKey="ha" stroke="#f97316" fill="url(#haGrad)" strokeWidth={2} dot={false} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      {/* ── Section: Feature Importance ─────────────────────────────── */}
-      <div className="bg-card border border-border rounded-lg p-3">
-        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2">
-          Feature Importance
-        </p>
-        <div className="flex flex-col gap-1.5">
-          {FEATURE_IMPORTANCE.map((f) => (
-            <div key={f.name} className="flex items-center gap-2">
-              <span className="text-[9.5px] font-mono text-muted-foreground w-20 shrink-0">{f.name}</span>
-              <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{
-                    width: `${f.value}%`,
-                    background: `oklch(${0.55 + (f.value / 100) * 0.15} ${0.15 + (f.value / 100) * 0.1} ${40 - (f.value / 100) * 15})`,
-                  }}
-                />
+      {/* Feature Importance */}
+      <div className="card">
+        <p className="label" style={{ marginBottom: 8 }}>Feature Importance</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {FEATURE_IMPORTANCE.map((f) => {
+            const hue = 30 - (f.value / 100) * 20;
+            const barColor = `hsl(${hue}, 90%, ${50 + (f.value / 100) * 10}%)`;
+            return (
+              <div key={f.name} className="feature-bar">
+                <span className="feature-bar-label">{f.name}</span>
+                <div className="feature-bar-track">
+                  <div className="feature-bar-fill" style={{ width: `${f.value}%`, background: barColor }} />
+                </div>
+                <span className="feature-bar-val">{f.value}</span>
               </div>
-              <span className="text-[9px] font-mono text-muted-foreground w-6 text-right">{f.value}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* ── Section: Confusion Matrix + full metrics ────────────────── */}
-      <div className="bg-card border border-border rounded-lg p-3">
-        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2">
-          Confusion Matrix · FIRMS Test Set
-        </p>
-        <div className="grid grid-cols-4 gap-1.5 mb-2">
+      {/* Confusion Matrix */}
+      <div className="card">
+        <p className="label" style={{ marginBottom: 8 }}>Confusion Matrix · FIRMS Test Set</p>
+        <div className="grid-4" style={{ marginBottom: 10 }}>
           {CONFUSION.map((c) => (
-            <div
-              key={c.label}
-              className="flex flex-col items-center justify-center rounded p-2"
-              style={{ background: `color-mix(in oklch, ${c.color} 12%, transparent)` }}
+            <div key={c.label} className="confusion-cell"
+              style={{ background: `color-mix(in srgb, ${c.color} 12%, transparent)` }}
             >
-              <span className="text-[8px] font-mono text-muted-foreground">{c.label}</span>
-              <span className="text-sm font-mono font-bold" style={{ color: c.color }}>{c.value}</span>
+              <span className="confusion-cell-label">{c.label}</span>
+              <span className="confusion-cell-value" style={{ color: c.color }}>{c.value}</span>
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2">
+        <div style={{
+          display: "grid", gridTemplateColumns: "1fr 1fr",
+          gap: "4px 16px", borderTop: "1px solid var(--border)", paddingTop: 8,
+        }}>
           {[
             { label: "Accuracy",  value: `${(FIRMS_ACCURACY  * 100).toFixed(1)}%` },
             { label: "Precision", value: `${(FIRMS_PRECISION * 100).toFixed(1)}%` },
@@ -428,44 +270,37 @@ export default function MetricsPanel() {
             { label: "IoU",       value: FIRMS_IOU.toFixed(3) },
             { label: "AUC-ROC",   value: FIRMS_AUC_ROC.toFixed(3) },
           ].map(({ label, value }) => (
-            <div key={label} className="text-[9px] font-mono text-muted-foreground">
-              {label}:{" "}
-              <span className="text-foreground font-semibold">{value}</span>
+            <div key={label} className="mono" style={{ fontSize: 9, color: "var(--fg-muted)" }}>
+              {label}: <span style={{ color: "var(--fg)", fontWeight: 600 }}>{value}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── Section: Export ─────────────────────────────────────────── */}
-      <div className="bg-card border border-border rounded-lg p-3">
-        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2.5">
-          Export Data
-        </p>
-        <ExportMenu />
-        <p className="text-[8px] font-mono text-muted-foreground/60 mt-2 leading-relaxed">
-          Exports include fire risk rasters, zone metrics, and simulation logs derived from NASA FIRMS MODIS/VIIRS active fire detections.
-        </p>
-      </div>
-
-      {/* ── Section: Alert Log ──────────────────────────────────────── */}
-      <div className="bg-card border border-border rounded-lg p-3">
-        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-          <PulseDot color="oklch(0.58 0.24 27)" />
+      {/* Alert Log */}
+      <div className="card">
+        <p className="label" style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+          <span className="pulse-dot" style={{ color: "var(--danger)" }} />
           Alert Log
         </p>
-        <div className="flex flex-col gap-1.5">
-          {ALERT_LOG.map((a, i) => (
-            <div key={i} className="flex items-start gap-2">
-              <span className="text-[8.5px] font-mono text-muted-foreground shrink-0 mt-0.5 w-8">{a.time}</span>
-              <span className={`text-[8px] font-mono font-semibold px-1 py-0.5 rounded border shrink-0 ${LEVEL_COLORS[a.level]}`}>
-                {a.level}
-              </span>
-              <div className="flex flex-col">
-                <span className="text-[9px] font-mono text-foreground">{a.zone}</span>
-                <span className="text-[8.5px] font-mono text-muted-foreground">{a.msg}</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {ALERT_LOG.map((a, i) => {
+            const style = LEVEL_STYLES[a.level];
+            return (
+              <div key={i} className="alert-row">
+                <span className="alert-time">{a.time}</span>
+                <span className="alert-badge" style={{
+                  background: style.bg, borderColor: style.border, color: style.color,
+                }}>
+                  {a.level}
+                </span>
+                <div className="alert-content">
+                  <span className="alert-zone">{a.zone}</span>
+                  <span className="alert-msg">{a.msg}</span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </aside>

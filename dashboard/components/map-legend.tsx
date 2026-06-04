@@ -12,16 +12,16 @@ interface Props {
 }
 
 const LAYERS: { id: MapLayer; label: string; color: string }[] = [
-  { id: "risk", label: "Risk Zones", color: "oklch(0.68 0.21 40)" },
-  { id: "historical", label: "Historical Fires", color: "oklch(0.45 0.10 30)" },
-  { id: "spread", label: "Spread Simulation", color: "oklch(0.58 0.24 27)" },
+  { id: "risk", label: "Risk Zones", color: "var(--accent)" },
+  { id: "historical", label: "Historical Fires", color: "#a0522d" },
+  { id: "spread", label: "Spread Simulation", color: "var(--danger)" },
 ];
 
 const RISK_LEGEND = [
-  { label: "Critical", color: "oklch(0.58 0.24 27)" },
-  { label: "High", color: "oklch(0.68 0.21 40)" },
-  { label: "Medium", color: "oklch(0.78 0.16 70)" },
-  { label: "Low", color: "oklch(0.50 0.12 145)" },
+  { label: "Critical", color: "var(--danger)" },
+  { label: "High", color: "var(--accent)" },
+  { label: "Medium", color: "var(--warning)" },
+  { label: "Low", color: "var(--success)" },
 ];
 
 export default function MapLegend({
@@ -33,31 +33,37 @@ export default function MapLegend({
   onResetSimulation,
 }: Props) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex-col gap-3" style={{ display: "flex" }}>
       {/* Layer toggles */}
-      <div className="bg-card border border-border rounded-lg p-3">
-        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest mb-2">Map Layers</p>
-        <div className="flex flex-col gap-1.5">
+      <div className="card">
+        <p className="label" style={{ marginBottom: 10 }}>Map Layers</p>
+        <div className="flex-col gap-1" style={{ display: "flex" }}>
           {LAYERS.map((l) => {
             const active = activeLayers.has(l.id);
             return (
               <button
                 key={l.id}
                 onClick={() => onToggle(l.id)}
-                className="flex items-center gap-2 text-left w-full group"
+                className="layer-toggle"
                 aria-pressed={active}
               >
                 <span
-                  className="w-3 h-3 rounded-sm border transition-all duration-150 shrink-0"
+                  className="layer-checkbox"
                   style={{
                     background: active ? l.color : "transparent",
                     borderColor: l.color,
                     opacity: active ? 1 : 0.5,
                   }}
-                />
+                >
+                  {active && (
+                    <svg viewBox="0 0 12 12" fill="none">
+                      <path d="M2.5 6L5 8.5L9.5 3.5" stroke="var(--bg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </span>
                 <span
-                  className="text-[10px] font-mono transition-colors duration-150"
-                  style={{ color: active ? "oklch(0.93 0.01 60)" : "oklch(0.55 0.01 60)" }}
+                  className="layer-label"
+                  style={{ color: active ? "var(--fg)" : "var(--fg-dim)" }}
                 >
                   {l.label}
                 </span>
@@ -68,57 +74,46 @@ export default function MapLegend({
       </div>
 
       {/* Risk legend */}
-      <div className="bg-card border border-border rounded-lg p-3">
-        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest mb-2">Risk Level</p>
-        <div className="flex flex-col gap-1.5">
+      <div className="card">
+        <p className="label" style={{ marginBottom: 10 }}>Risk Level</p>
+        <div className="flex-col gap-2" style={{ display: "flex" }}>
           {RISK_LEGEND.map((r) => (
-            <div key={r.label} className="flex items-center gap-2">
-              <span
-                className="w-3 h-3 rounded-full shrink-0"
-                style={{ background: r.color }}
-              />
-              <span className="text-[10px] font-mono text-muted-foreground">{r.label}</span>
+            <div key={r.label} className="flex-center gap-2">
+              <span className="risk-dot" style={{ background: r.color }} />
+              <span className="mono" style={{ fontSize: 10.5, color: "var(--fg-muted)" }}>{r.label}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Simulation control */}
-      <div className="bg-card border border-border rounded-lg p-3">
-        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest mb-2">Simulation</p>
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono text-muted-foreground">Step</span>
-            <span className="text-[10px] font-mono" style={{ color: "oklch(0.68 0.21 40)" }}>
+      <div className="card">
+        <p className="label" style={{ marginBottom: 10 }}>Simulation</p>
+        <div className="flex-col gap-2" style={{ display: "flex" }}>
+          <div className="flex-between">
+            <span className="mono" style={{ fontSize: 10, color: "var(--fg-muted)" }}>Step</span>
+            <span className="mono" style={{ fontSize: 10, color: "var(--accent)", fontWeight: 700 }}>
               T+{simulationStep * 6}h
             </span>
           </div>
-          {/* Progress bar */}
-          <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+          <div className="progress-track">
             <div
-              className="h-full rounded-full transition-all duration-500"
+              className="progress-fill"
               style={{
                 width: `${Math.min((simulationStep / 12) * 100, 100)}%`,
-                background: "oklch(0.58 0.24 27)",
+                background: "var(--danger)",
               }}
             />
           </div>
-          <div className="flex gap-1.5 mt-1">
+          <div className="flex-center gap-2" style={{ marginTop: 4 }}>
             <button
               onClick={onToggleSimulation}
-              className="flex-1 text-[10px] font-mono font-semibold py-1.5 rounded border transition-all duration-150"
-              style={
-                simulationActive
-                  ? { background: "oklch(0.58 0.24 27)/15", borderColor: "oklch(0.58 0.24 27)/60", color: "oklch(0.58 0.24 27)" }
-                  : { background: "oklch(0.68 0.21 40)/15", borderColor: "oklch(0.68 0.21 40)/60", color: "oklch(0.68 0.21 40)" }
-              }
+              className={simulationActive ? "btn btn--danger" : "btn btn--accent"}
+              style={{ flex: 1 }}
             >
               {simulationActive ? "■ Pause" : "▶ Run"}
             </button>
-            <button
-              onClick={onResetSimulation}
-              className="px-2 text-[10px] font-mono py-1.5 rounded border border-border text-muted-foreground hover:text-foreground transition-colors"
-            >
+            <button onClick={onResetSimulation} className="btn btn--ghost">
               ↺
             </button>
           </div>
@@ -126,24 +121,19 @@ export default function MapLegend({
       </div>
 
       {/* Environmental conditions */}
-      <div className="bg-card border border-border rounded-lg p-3">
-        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest mb-2">Conditions</p>
-        <div className="flex flex-col gap-1.5">
+      <div className="card">
+        <p className="label" style={{ marginBottom: 10 }}>Conditions</p>
+        <div className="flex-col gap-1" style={{ display: "flex" }}>
           {[
-            { k: "Temperature", v: "38°C", w: 0.88 },
-            { k: "Humidity", v: "12%", w: 0.12 },
-            { k: "Wind Speed", v: "18 km/h", w: 0.6 },
-            { k: "Fuel Moisture", v: "8%", w: 0.08 },
-            { k: "NDVI", v: "0.31", w: 0.31 },
-          ].map(({ k, v, w }) => (
-            <div key={k} className="flex items-center justify-between">
-              <span className="text-[9.5px] font-mono text-muted-foreground">{k}</span>
-              <span
-                className="text-[9.5px] font-mono font-semibold"
-                style={{ color: `oklch(${0.45 + w * 0.35} ${0.08 + w * 0.17} ${145 - w * 120})` }}
-              >
-                {v}
-              </span>
+            { k: "Temperature", v: "38°C", color: "var(--danger)" },
+            { k: "Humidity", v: "12%", color: "var(--warning)" },
+            { k: "Wind Speed", v: "18 km/h", color: "var(--accent)" },
+            { k: "Fuel Moisture", v: "8%", color: "var(--danger)" },
+            { k: "NDVI", v: "0.31", color: "var(--success)" },
+          ].map(({ k, v, color }) => (
+            <div key={k} className="condition-row">
+              <span className="condition-key">{k}</span>
+              <span className="condition-val" style={{ color }}>{v}</span>
             </div>
           ))}
         </div>

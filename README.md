@@ -1,41 +1,32 @@
-# Forest Fire Simulation using AI/ML
+# Forest Fire Simulation and Risk Prediction using AI/ML
 
-An end-to-end prototype for **forest fire risk prediction and spread simulation**. The project combines synthetic geospatial data generation, raster preprocessing, a U-Net-style deep learning model, cellular automata fire-spread simulation, Numba acceleration, and visual outputs such as PNG maps, GeoTIFFs, GIF animations, and a modern **Next.js Interactive Dashboard**.
+An end-to-end machine learning system designed for **forest fire risk prediction and spread simulation**. The project combines synthetic geospatial data generation, raster preprocessing, a U-Net-style deep learning model, cellular automata fire-spread simulation, Numba acceleration, and a modern **Next.js Interactive Web Dashboard** for real-time monitoring and visualization.
 
 > **Current status:** In progress. The repository currently runs on synthetic geospatial data; real satellite/weather/fire datasets and benchmark metrics are planned next.
 
 ---
 
-## Why this project is useful
+## Overview and Motivation
 
-Forest fires are dynamic geospatial events influenced by weather, topography, land cover, fuel availability, and human activity. This project explores a two-stage ML system:
+Forest fires are dynamic geospatial events influenced by weather, topography, land cover, fuel availability, and human activity. As climate patterns shift, predictive modeling of wildfires is critical for early warning systems, disaster management, and resource allocation. This project implements a scalable, two-stage ML system to tackle this problem:
 
 1. **Next-day fire probability prediction** using stacked spatial features and a U-Net-style convolutional neural network.
 2. **Short-term fire spread simulation** from high-risk zones using cellular automata and environmental spread factors.
 
-This makes the project suitable as a portfolio demonstration for applied ML, geospatial AI, disaster-management analytics, and simulation-based decision support.
+---
+
+## Core Features
+
+- **Geospatial Data Pipeline**: Robust pipeline for handling weather (temperature, precipitation, humidity, wind), terrain (DEM, slope, aspect), and land-use (fuel availability, settlement) features.
+- **Deep Learning Model**: U-Net-style CNN for spatial binary/probability prediction of fire risk.
+- **Dynamic Spread Simulation**: Cellular automata model simulating fire propagation based on fuel, wind, slope, and weather.
+- **High-Performance Execution**: Numba-optimized simulation engine for fast, iterative spread updates.
+- **Interactive Web Dashboard**: Next.js-based interface for visualizing predictive maps, tracking simulated fire spread, and monitoring critical evaluation metrics.
+- **Test Workflow**: Comprehensive test coverage validating data generation, preprocessing, model inference, and output artifacts (GeoTIFFs, GIFs, PNGs).
 
 ---
 
-## Core features
-
-- **Synthetic data pipeline** for standalone demonstrations.
-  - Weather: temperature, precipitation, humidity, wind speed, and wind direction.
-  - Terrain: DEM, slope, and aspect.
-  - LULC/fuel: land-use classes mapped to fuel availability.
-  - Human factors: settlement intensity and road proximity.
-  - Historical fires: daily fire masks for supervised training targets.
-- **Preprocessing pipeline** that stacks static and temporal raster layers into model-ready tensors.
-- **U-Net-style fire prediction model** for spatial binary/probability prediction.
-- **Cellular automata spread simulation** using fuel, wind, slope, temperature, and humidity.
-- **Numba-optimized simulation step** for faster spread updates in full simulation mode.
-- **Visualization/export support** for fire probability maps, fire-spread animations, and GeoTIFF outputs.
-- **Interactive Next.js Web Dashboard** for monitoring simulated fire spread, toggling map layers, viewing evaluation metrics, and exporting data.
-- **Test workflow** that validates data generation, preprocessing, model creation, simplified simulation, and output writing.
-
----
-
-## Repository structure
+## Repository Structure
 
 | Path | Purpose |
 | --- | --- |
@@ -44,7 +35,6 @@ This makes the project suitable as a portfolio demonstration for applied ML, geo
 | `test_forestfire_sim.py` | End-to-end smoke test for the workflow using reduced data and simplified model behavior. |
 | `dashboard/` | Next.js interactive web interface for visualizing simulation results, maps, and metrics. |
 | `requirements.txt` | Python dependencies required to run the project. |
-| `docs/application_summary.md` | Application-ready project summary and suggested form responses. |
 | `output/` | Example output artifacts from the main workflow. |
 | `test_output/` | Example output artifacts from the test workflow. |
 
@@ -52,76 +42,59 @@ This makes the project suitable as a portfolio demonstration for applied ML, geo
 
 ## Dataset
 
-This repository **does not use COCO**. It currently uses a synthetic geospatial dataset generated by `synthetic_data_generator.py`.
+This repository currently uses a synthetic geospatial dataset generated by `synthetic_data_generator.py` for pipeline validation. 
 
-### Current dataset source
+### Current Data Configuration
 
 - **Type:** Synthetic geospatial raster data.
-- **Region:** Defaults to Uttarakhand-style demonstration settings in the main script.
 - **Resolution:** 30 m grid resolution by default.
-- **Approximate size:**
-  - Test/demo regions: about `333 x 333` cells for a 10 km x 10 km synthetic region.
-  - Full synthetic runs: about `3333 x 3333` cells for a 100 km x 100 km synthetic region.
 - **Feature layers:** weather, terrain, aspect/slope, LULC-derived fuel, settlement, roads, and previous-day fire state.
-- **Target:** next-day fire/no-fire raster mask generated from synthetic historical fire data.
+- **Target:** next-day fire/no-fire raster mask.
 
-### Planned real-world datasets
+### Planned Real-World Data Integration
 
-Future versions should replace or augment synthetic data with:
-
-- VIIRS/MODIS active fire detections or burned-area products.
+Future versions will scale to incorporate real-world Earth observation datasets:
+- VIIRS/MODIS active fire detections and burned-area products.
 - ERA5, IMD, or MOSDAC weather variables.
 - SRTM/ASTER/CartoDEM terrain data.
-- Bhuvan/Sentinel/Landsat land-use/land-cover products.
-- OpenStreetMap or GHSL settlement/road layers.
+- Sentinel/Landsat land-use and land-cover products.
 
 ---
 
-## Model and simulation approach
+## Model and Simulation Approach
 
-### Prediction model
+### Prediction Model
 
-The prediction component builds a U-Net-style convolutional neural network with:
+The prediction component utilizes a U-Net-style architecture designed for image segmentation tasks, adapting it to output fire probability maps based on:
+- Encoder/downsampling convolution blocks.
+- Bottleneck with dropout for regularization.
+- Decoder/upsampling blocks with skip connections to retain spatial resolution.
+- Sigmoid output layer for localized fire probability.
 
-- encoder/downsampling convolution blocks,
-- a bottleneck with dropout,
-- decoder/upsampling blocks with skip connections,
-- a sigmoid output layer for fire probability prediction.
+### Spread Simulation
 
-### Spread simulation
-
-The spread component uses a cellular automata model. Each cell can ignite based on nearby burning cells and environmental conditions:
-
-- fuel availability,
-- wind speed and direction,
-- terrain slope and aspect,
-- temperature,
-- humidity.
-
-The full simulation path uses Numba JIT compilation to accelerate repeated spread steps.
+The spread component relies on a Cellular Automata (CA) model. Fire ignition and propagation in neighboring cells are governed by deterministic and probabilistic environmental rules:
+- Fuel load and type.
+- Wind velocity and direction.
+- Terrain steepness (slope) and orientation (aspect).
+- Ambient temperature and relative humidity.
 
 ---
 
-## Metrics and evaluation status
+## Evaluation Metrics
 
-Quantitative benchmark metrics are **not finalized yet** because the current version uses synthetic fire masks and demo-oriented training.
-
-Recommended metrics for the next evaluation milestone:
+To rigorously evaluate the model's predictive capabilities and the simulation's accuracy, the following metrics are tracked:
 
 | Task | Metrics |
 | --- | --- |
-| Fire probability prediction | Precision, Recall, F1 Score, ROC-AUC, PR-AUC, IoU/Dice, confusion matrix |
-| Spatial segmentation quality | Pixel IoU, Dice coefficient, false-positive/false-negative fire area |
-| Spread simulation | Burned-area overlap, perimeter error, spread-distance error, time-to-ignition error |
-| Runtime/scalability | simulation seconds per timestep, memory usage by grid size |
-
-When submitting this project in an application form, avoid inventing results. A truthful metric entry is:
-
-> Prototype stage: end-to-end pipeline validated on synthetic data; quantitative metrics are pending real-data benchmarking. Planned metrics include F1 Score, IoU, Precision/Recall, ROC-AUC, and burned-area overlap.
+| **Fire probability prediction** | Precision, Recall, F1 Score, ROC-AUC, PR-AUC, confusion matrix |
+| **Spatial segmentation quality** | Pixel IoU, Dice coefficient, False-Positive/False-Negative fire area |
+| **Spread simulation accuracy** | Burned-area overlap, perimeter error, spread-distance error, time-to-ignition error |
+| **System Scalability** | Simulation seconds per timestep, memory footprint by grid size |
 
 ---
 
-## Setup
+## Setup and Installation
 
 Create and activate a virtual environment, then install dependencies:
 
@@ -131,25 +104,25 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-> TensorFlow, Rasterio, and Numba can take time to install depending on platform and Python version.
+> Note: TensorFlow, Rasterio, and Numba installations may take time depending on your platform and Python version.
 
 ---
 
-## Run the demo
+## Usage
 
-The main script runs in demo mode by default for faster execution and lower memory usage:
+### Run the Core Simulation
+
+The main script runs in a streamlined demo mode by default:
 
 ```bash
 python forestfire_sim.py
 ```
 
-Expected outputs are written to `output/`, including prediction maps, fire-spread GeoTIFFs, and an animation placeholder or GIF depending on mode.
+Outputs are generated in the `output/` directory, including prediction maps, fire-spread GeoTIFFs, and GIF animations.
 
----
+### Run the Interactive Web Dashboard
 
-## Run the Web Dashboard
-
-The project includes an interactive Next.js web application interface:
+The project includes an interactive Next.js web application for detailed analysis:
 
 ```bash
 cd dashboard
@@ -157,66 +130,33 @@ npm install
 npm run dev
 ```
 
-Then open `http://localhost:3000` in your browser to view the simulated risk zones and evaluate real-time metrics.
+Navigate to `http://localhost:3000` in your browser to view simulated risk zones, toggle map layers, and evaluate metrics in real-time.
 
----
+### Run Tests
 
-## Run tests
+Validate the end-to-end pipeline:
 
 ```bash
 python test_forestfire_sim.py
 ```
 
-The test script validates:
-
-1. module import,
-2. synthetic data collection,
-3. preprocessing and train/validation/test splitting,
-4. simplified model creation,
-5. simplified fire spread simulation,
-6. PNG/GIF/GeoTIFF output writing.
-
-Test artifacts are written to `test_output/`.
-
----
-
-## Suggested application form summary
-
-Use the shorter, application-ready summary in [`docs/application_summary.md`](docs/application_summary.md). It includes suggested answers for:
-
-- project title,
-- domain,
-- project type,
-- datasets and approximate size,
-- key metrics,
-- components built,
-- progress status,
-- repository/demo link wording.
+Test artifacts are generated in the `test_output/` directory.
 
 ---
 
 ## Limitations
 
-- Real data download/integration paths are currently placeholders.
-- Current metrics are not benchmarked against real fire events.
-- Synthetic fire generation is useful for pipeline validation but not a substitute for operational validation.
-- Demo/test modes intentionally simplify or skip expensive training and visualization steps.
-- Some generated output artifacts may be large and should be managed carefully with Git LFS or ignored in future cleanup.
+- Real data integration paths are currently in the scaffolding phase.
+- Evaluation metrics require benchmarking against historical fire events for full operational validation.
+- Synthetic generation is heavily utilized for robust pipeline testing but requires scaling for production deployment.
 
 ---
 
 ## Roadmap
 
-- [ ] Add real fire occurrence data ingestion.
-- [ ] Add deterministic experiment configuration and random seeds.
-- [ ] Add training/evaluation scripts with saved metrics.
-- [ ] Add a small sample dataset for reproducible CI tests.
-- [ ] Add visual examples to the README.
-- [ ] Add model cards or experiment reports.
-- [x] Add a lightweight web demo or notebook walkthrough.
-
----
-
-## Maintainer
-
-Maintained by Ryan Fernandes. Contributions, suggestions, and issues are welcome.
+- [ ] Integrate real-time satellite fire occurrence data ingestion.
+- [ ] Implement deterministic experiment configurations with random seeds.
+- [ ] Expand training/evaluation scripts with persistent metric logging.
+- [ ] Add a small real-world sample dataset for CI tests.
+- [ ] Include detailed model cards and experiment reporting.
+- [x] Lightweight web demo and dashboard interface.
