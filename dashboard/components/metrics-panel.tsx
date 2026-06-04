@@ -2,70 +2,33 @@
 
 import { useEffect, useState } from "react";
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 
-// ─── Real NASA FIRMS MODIS/VIIRS dataset results ─────────────────────────
-const FIRMS_ACCURACY  = 0.980;
-const FIRMS_F1        = 0.928;
-const FIRMS_IOU       = 0.866;
-const FIRMS_PRECISION = 0.941;
-const FIRMS_RECALL    = 0.916;
-const FIRMS_AUC_ROC   = 0.971;
-
-const SPREAD_DATA = [
-  { t: "T+0h",  ha: 0 },
-  { t: "T+6h",  ha: 320 },
-  { t: "T+12h", ha: 890 },
-  { t: "T+18h", ha: 1820 },
-  { t: "T+24h", ha: 3240 },
-  { t: "T+36h", ha: 5680 },
-  { t: "T+48h", ha: 8900 },
-  { t: "T+72h", ha: 12400 },
-];
-
-const ACCURACY_HISTORY = [
-  { epoch: 10,  acc: 0.712, f1: 0.670, iou: 0.541 },
-  { epoch: 20,  acc: 0.761, f1: 0.722, iou: 0.610 },
-  { epoch: 30,  acc: 0.803, f1: 0.768, iou: 0.668 },
-  { epoch: 40,  acc: 0.836, f1: 0.810, iou: 0.714 },
-  { epoch: 50,  acc: 0.861, f1: 0.847, iou: 0.749 },
-  { epoch: 60,  acc: 0.893, f1: 0.876, iou: 0.793 },
-  { epoch: 70,  acc: 0.921, f1: 0.901, iou: 0.830 },
-  { epoch: 80,  acc: 0.958, f1: 0.914, iou: 0.851 },
-  { epoch: 90,  acc: 0.972, f1: 0.922, iou: 0.860 },
-  { epoch: 100, acc: FIRMS_ACCURACY, f1: FIRMS_F1, iou: FIRMS_IOU },
-];
-
-const FEATURE_IMPORTANCE = [
-  { name: "Wind Speed",   value: 94 },
-  { name: "Humidity",     value: 87 },
-  { name: "Temp Anomaly", value: 82 },
-  { name: "NDVI Index",   value: 76 },
-  { name: "Slope",        value: 65 },
-  { name: "Fuel Load",    value: 58 },
-];
-
-const CONFUSION = [
-  { label: "TP", value: 1842, color: "var(--success)" },
-  { label: "TN", value: 2103, color: "var(--success)" },
-  { label: "FP", value: 115,  color: "var(--accent)" },
-  { label: "FN", value: 168,  color: "var(--danger)" },
-];
-
-const ALERT_LOG = [
-  { time: "14:32", zone: "Sierra Alta",  level: "CRITICAL", msg: "Ignition probability >92%" },
-  { time: "14:18", zone: "Pico Rojo",    level: "HIGH",     msg: "Wind shift detected" },
-  { time: "13:55", zone: "Valle Seco",   level: "HIGH",     msg: "Humidity dropped to 12%" },
-  { time: "13:40", zone: "Cerro Norte",  level: "MEDIUM",   msg: "Temperature spike +8°C" },
-  { time: "12:58", zone: "Bosque Sur",   level: "MEDIUM",   msg: "Fuel moisture low" },
-];
-
-const LEVEL_STYLES: Record<string, { bg: string; border: string; color: string }> = {
-  CRITICAL: { bg: "var(--danger-dim)", border: "var(--danger-border)", color: "var(--danger)" },
-  HIGH:     { bg: "var(--accent-dim)", border: "var(--accent-border)", color: "var(--accent)" },
-  MEDIUM:   { bg: "var(--warning-dim)", border: "var(--warning-border)", color: "var(--warning)" },
-};
+interface ModelMetrics {
+  model: string;
+  accuracy: number;
+  precision: number;
+  recall: number;
+  f1_score: number;
+  auc_roc: number;
+  confusion_matrix: {
+    true_positive: number;
+    false_positive: number;
+    true_negative: number;
+    false_negative: number;
+  };
+  train_samples: number;
+  test_samples: number;
+  train_positives: number;
+  test_positives: number;
+  feature_importances: Record<string, number>;
+  region: string;
+  bounds: number[];
+  grid_size: number;
+  date_range: [string, string];
+  dataset: string;
+}
 
 const CHART_TOOLTIP_STYLE = {
   background: "#151918",
@@ -77,184 +40,128 @@ const CHART_TOOLTIP_STYLE = {
 };
 
 export default function MetricsPanel() {
-  const [liveBurnedHa, setLiveBurnedHa] = useState(4820);
+  const [metrics, setMetrics] = useState<ModelMetrics | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setLiveBurnedHa((v) => Math.round(v + (Math.random() - 0.3) * 25));
-    }, 2500);
-    return () => clearInterval(id);
+    fetch("/api/metrics")
+      .then((r) => {
+        if (!r.ok) throw new Error("Metrics not found");
+        return r.json();
+      })
+      .then(setMetrics)
+      .catch((e) => setError(e.message));
   }, []);
+
+  if (error) {
+    return (
+      <div className="card" style={{ textAlign: "center", padding: 24 }}>
+        <p className="mono" style={{ fontSize: 11, color: "var(--fg-muted)" }}>
+          No model metrics available.
+        </p>
+        <p className="mono" style={{ fontSize: 9, color: "var(--fg-dim)", marginTop: 6 }}>
+          Run <code>python train_fire_model.py</code> first.
+        </p>
+      </div>
+    );
+  }
+
+  if (!metrics) {
+    return (
+      <div className="card" style={{ textAlign: "center", padding: 24 }}>
+        <p className="mono" style={{ fontSize: 11, color: "var(--fg-muted)" }}>
+          Loading metrics...
+        </p>
+      </div>
+    );
+  }
+
+  const cm = metrics.confusion_matrix;
+  const featureData = Object.entries(metrics.feature_importances)
+    .map(([name, value]) => ({ name: name.replace(/_/g, " "), value: +(value * 100).toFixed(1) }))
+    .sort((a, b) => b.value - a.value);
 
   return (
     <aside
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-        height: "100%",
-        overflowY: "auto",
-        paddingRight: 2,
-      }}
+      style={{ display: "flex", flexDirection: "column", gap: 12, height: "100%", overflowY: "auto", paddingRight: 2 }}
       aria-label="AI metrics panel"
     >
       {/* Dataset badge */}
       <div className="card" style={{
-        background: "var(--accent-dim)",
-        borderColor: "var(--accent-border)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
+        background: "var(--accent-dim)", borderColor: "var(--accent-border)",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <div>
           <p className="mono" style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)" }}>
-            NASA FIRMS · MODIS/VIIRS
+            {metrics.dataset}
           </p>
           <p className="mono" style={{ fontSize: 9, color: "var(--fg-muted)", marginTop: 2 }}>
-            Active fire detections · satellite
+            {metrics.region} · {metrics.date_range[0]} to {metrics.date_range[1]}
           </p>
         </div>
         <span className="mono" style={{
           fontSize: 8, padding: "3px 8px", borderRadius: "var(--radius-sm)",
-          background: "var(--success-dim)", border: "1px solid var(--success-border)",
-          color: "var(--success)", fontWeight: 700,
+          background: "var(--info-dim)", border: "1px solid var(--info-border)",
+          color: "var(--info)", fontWeight: 700,
         }}>
-          VERIFIED
+          {metrics.model.replace("Classifier", "")}
         </span>
       </div>
 
       {/* Model Performance */}
       <div>
-        <p className="label" style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-          <span className="pulse-dot" style={{ color: "var(--success)" }} />
-          Model Performance — FIRMS Results
-        </p>
+        <p className="label" style={{ marginBottom: 8 }}>Classification Metrics</p>
         <div className="grid-2">
           {[
-            { label: "Accuracy", value: `${(FIRMS_ACCURACY * 100).toFixed(1)}%`, sub: "vs. 85.2% baseline", color: "var(--success)" },
-            { label: "F1 Score", value: FIRMS_F1.toFixed(3), sub: "Macro weighted", color: "var(--success)" },
-            { label: "IoU Score", value: FIRMS_IOU.toFixed(3), sub: "Intersection over Union", color: "var(--warning)" },
-            { label: "Pred. Burned", value: `${liveBurnedHa.toLocaleString()} ha`, sub: "72h projection", color: "var(--accent)" },
+            { label: "Accuracy", value: `${(metrics.accuracy * 100).toFixed(2)}%`, color: "var(--success)" },
+            { label: "F1 Score", value: metrics.f1_score.toFixed(4), color: metrics.f1_score > 0.5 ? "var(--success)" : "var(--warning)" },
+            { label: "Precision", value: metrics.precision.toFixed(4), color: "var(--info)" },
+            { label: "Recall", value: metrics.recall.toFixed(4), color: "var(--accent)" },
           ].map((m) => (
             <div key={m.label} className="stat-card">
               <span className="stat-label">{m.label}</span>
-              <span className="stat-value" style={{ color: m.color }}>{m.value}</span>
-              <span className="stat-sub">
-                <span style={{ color: m.color }}>▲</span> {m.sub}
-              </span>
+              <span className="stat-value" style={{ color: m.color, fontSize: 18 }}>{m.value}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Precision & Recall */}
+      {/* AUC-ROC */}
       <div className="card">
-        <p className="label" style={{ marginBottom: 10 }}>Precision &amp; Recall</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {[
-            { label: "Precision", value: FIRMS_PRECISION, color: "var(--success)" },
-            { label: "Recall",    value: FIRMS_RECALL,    color: "var(--accent)" },
-            { label: "F1 Score",  value: FIRMS_F1,        color: "var(--warning)" },
-            { label: "IoU",       value: FIRMS_IOU,       color: "var(--info)" },
-          ].map((m) => (
-            <div key={m.label} className="metric-mini">
-              <span className="metric-mini-label">{m.label}</span>
-              <div className="metric-mini-bar">
-                <div className="metric-mini-fill" style={{ width: `${m.value * 100}%`, background: m.color }} />
-              </div>
-              <span className="metric-mini-value" style={{ color: m.color }}>{m.value.toFixed(3)}</span>
-            </div>
-          ))}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span className="label">AUC-ROC</span>
+          <span className="mono" style={{ fontSize: 16, fontWeight: 700, color: metrics.auc_roc > 0.7 ? "var(--success)" : "var(--warning)" }}>
+            {metrics.auc_roc.toFixed(4)}
+          </span>
         </div>
-      </div>
-
-      {/* Training Convergence */}
-      <div className="card">
-        <p className="label" style={{ marginBottom: 8 }}>Training Convergence (100 epochs)</p>
-        <ResponsiveContainer width="100%" height={100}>
-          <LineChart data={ACCURACY_HISTORY} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-            <XAxis dataKey="epoch" tick={{ fontSize: 8, fill: "#7a8580" }} />
-            <YAxis domain={[0.5, 1.0]} tick={{ fontSize: 8, fill: "#7a8580" }}
-              tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
-            />
-            <Tooltip contentStyle={CHART_TOOLTIP_STYLE}
-              labelStyle={{ color: "#e8ece9" }}
-              formatter={(v: number, name: string) => [`${(v * 100).toFixed(1)}%`, name]}
-            />
-            <Line type="monotone" dataKey="acc" stroke="var(--success)" strokeWidth={1.8} dot={false} name="Accuracy" />
-            <Line type="monotone" dataKey="f1"  stroke="var(--accent)"  strokeWidth={1.8} dot={false} name="F1" strokeDasharray="4 2" />
-            <Line type="monotone" dataKey="iou" stroke="var(--info)"    strokeWidth={1.5} dot={false} name="IoU" strokeDasharray="2 3" />
-          </LineChart>
-        </ResponsiveContainer>
-        <div className="flex-center gap-3" style={{ marginTop: 6 }}>
-          {[
-            { label: "Accuracy", color: "var(--success)", dash: false },
-            { label: "F1", color: "var(--accent)", dash: true },
-            { label: "IoU", color: "var(--info)", dash: true },
-          ].map((l) => (
-            <span key={l.label} className="mono flex-center gap-1" style={{ fontSize: 9, display: "inline-flex", alignItems: "center", gap: 4 }}>
-              <span style={{
-                display: "inline-block", width: 16, height: l.dash ? 0 : 2,
-                background: l.dash ? "transparent" : l.color,
-                borderBottom: l.dash ? `2px dashed ${l.color}` : undefined,
-              }} />
-              {l.label}
-            </span>
-          ))}
+        <div className="progress-track" style={{ marginTop: 8 }}>
+          <div className="progress-fill" style={{
+            width: `${metrics.auc_roc * 100}%`,
+            background: metrics.auc_roc > 0.7 ? "var(--success)" : "var(--warning)",
+          }} />
         </div>
-      </div>
-
-      {/* Spread Projection */}
-      <div className="card">
-        <p className="label" style={{ marginBottom: 8 }}>Spread Projection (hectares)</p>
-        <ResponsiveContainer width="100%" height={100}>
-          <AreaChart data={SPREAD_DATA} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="haGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#f97316" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#f97316" stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            <XAxis dataKey="t" tick={{ fontSize: 8, fill: "#7a8580" }} />
-            <YAxis tick={{ fontSize: 8, fill: "#7a8580" }} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
-            <Tooltip contentStyle={CHART_TOOLTIP_STYLE}
-              formatter={(v: number) => [`${v.toLocaleString()} ha`, "Burned Area"]}
-            />
-            <Area type="monotone" dataKey="ha" stroke="#f97316" fill="url(#haGrad)" strokeWidth={2} dot={false} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Feature Importance */}
-      <div className="card">
-        <p className="label" style={{ marginBottom: 8 }}>Feature Importance</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {FEATURE_IMPORTANCE.map((f) => {
-            const hue = 30 - (f.value / 100) * 20;
-            const barColor = `hsl(${hue}, 90%, ${50 + (f.value / 100) * 10}%)`;
-            return (
-              <div key={f.name} className="feature-bar">
-                <span className="feature-bar-label">{f.name}</span>
-                <div className="feature-bar-track">
-                  <div className="feature-bar-fill" style={{ width: `${f.value}%`, background: barColor }} />
-                </div>
-                <span className="feature-bar-val">{f.value}</span>
-              </div>
-            );
-          })}
-        </div>
+        <p className="mono" style={{ fontSize: 8, color: "var(--fg-dim)", marginTop: 6 }}>
+          {metrics.auc_roc < 0.5 ? "Below random baseline — insufficient training data" :
+           metrics.auc_roc < 0.7 ? "Weak discriminative power — more data needed" :
+           "Good discriminative performance"}
+        </p>
       </div>
 
       {/* Confusion Matrix */}
       <div className="card">
-        <p className="label" style={{ marginBottom: 8 }}>Confusion Matrix · FIRMS Test Set</p>
-        <div className="grid-4" style={{ marginBottom: 10 }}>
-          {CONFUSION.map((c) => (
+        <p className="label" style={{ marginBottom: 8 }}>Confusion Matrix</p>
+        <div className="grid-2" style={{ marginBottom: 10 }}>
+          {[
+            { label: "True Pos", value: cm.true_positive, color: "var(--success)" },
+            { label: "False Pos", value: cm.false_positive, color: "var(--accent)" },
+            { label: "False Neg", value: cm.false_negative, color: "var(--danger)" },
+            { label: "True Neg", value: cm.true_negative, color: "var(--success)" },
+          ].map((c) => (
             <div key={c.label} className="confusion-cell"
               style={{ background: `color-mix(in srgb, ${c.color} 12%, transparent)` }}
             >
               <span className="confusion-cell-label">{c.label}</span>
-              <span className="confusion-cell-value" style={{ color: c.color }}>{c.value}</span>
+              <span className="confusion-cell-value" style={{ color: c.color }}>{c.value.toLocaleString()}</span>
             </div>
           ))}
         </div>
@@ -262,46 +169,44 @@ export default function MetricsPanel() {
           display: "grid", gridTemplateColumns: "1fr 1fr",
           gap: "4px 16px", borderTop: "1px solid var(--border)", paddingTop: 8,
         }}>
-          {[
-            { label: "Accuracy",  value: `${(FIRMS_ACCURACY  * 100).toFixed(1)}%` },
-            { label: "Precision", value: `${(FIRMS_PRECISION * 100).toFixed(1)}%` },
-            { label: "Recall",    value: `${(FIRMS_RECALL    * 100).toFixed(1)}%` },
-            { label: "F1 Score",  value: FIRMS_F1.toFixed(3) },
-            { label: "IoU",       value: FIRMS_IOU.toFixed(3) },
-            { label: "AUC-ROC",   value: FIRMS_AUC_ROC.toFixed(3) },
-          ].map(({ label, value }) => (
-            <div key={label} className="mono" style={{ fontSize: 9, color: "var(--fg-muted)" }}>
-              {label}: <span style={{ color: "var(--fg)", fontWeight: 600 }}>{value}</span>
-            </div>
-          ))}
+          <div className="mono" style={{ fontSize: 9, color: "var(--fg-muted)" }}>
+            Train samples: <span style={{ color: "var(--fg)", fontWeight: 600 }}>{metrics.train_samples.toLocaleString()}</span>
+          </div>
+          <div className="mono" style={{ fontSize: 9, color: "var(--fg-muted)" }}>
+            Test samples: <span style={{ color: "var(--fg)", fontWeight: 600 }}>{metrics.test_samples.toLocaleString()}</span>
+          </div>
+          <div className="mono" style={{ fontSize: 9, color: "var(--fg-muted)" }}>
+            Train positives: <span style={{ color: "var(--fg)", fontWeight: 600 }}>{metrics.train_positives}</span>
+          </div>
+          <div className="mono" style={{ fontSize: 9, color: "var(--fg-muted)" }}>
+            Test positives: <span style={{ color: "var(--fg)", fontWeight: 600 }}>{metrics.test_positives}</span>
+          </div>
         </div>
       </div>
 
-      {/* Alert Log */}
+      {/* Feature Importance */}
       <div className="card">
-        <p className="label" style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-          <span className="pulse-dot" style={{ color: "var(--danger)" }} />
-          Alert Log
+        <p className="label" style={{ marginBottom: 8 }}>Feature Importance (%)</p>
+        <ResponsiveContainer width="100%" height={160}>
+          <BarChart data={featureData} layout="vertical" margin={{ top: 0, right: 4, left: 0, bottom: 0 }}>
+            <XAxis type="number" tick={{ fontSize: 8, fill: "#7a8580" }} tickFormatter={(v: number) => `${v}%`} />
+            <YAxis type="category" dataKey="name" tick={{ fontSize: 8, fill: "#7a8580" }} width={100} />
+            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => [`${v.toFixed(1)}%`, "Importance"]} />
+            <Bar dataKey="value" fill="var(--accent)" radius={[0, 3, 3, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Data note */}
+      <div className="card" style={{ borderColor: "var(--warning-border)" }}>
+        <p className="label" style={{ marginBottom: 6, color: "var(--warning)" }}>Data Note</p>
+        <p className="mono" style={{ fontSize: 9, color: "var(--fg-muted)", lineHeight: 1.6 }}>
+          The FIRMS 7-day export covers {metrics.date_range[0]} to {metrics.date_range[1]} with
+          only {metrics.train_positives + metrics.test_positives} fire-positive cells out of {(metrics.train_samples + metrics.test_samples).toLocaleString()} total.
+          This extreme class imbalance ({((metrics.train_positives + metrics.test_positives) / (metrics.train_samples + metrics.test_samples) * 100).toFixed(2)}% positive rate)
+          is typical of satellite fire detection data and explains the low recall.
+          Production systems address this with longer temporal windows, oversampling, and additional feature sources (weather, terrain, NDVI).
         </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {ALERT_LOG.map((a, i) => {
-            const style = LEVEL_STYLES[a.level];
-            return (
-              <div key={i} className="alert-row">
-                <span className="alert-time">{a.time}</span>
-                <span className="alert-badge" style={{
-                  background: style.bg, borderColor: style.border, color: style.color,
-                }}>
-                  {a.level}
-                </span>
-                <div className="alert-content">
-                  <span className="alert-zone">{a.zone}</span>
-                  <span className="alert-msg">{a.msg}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
       </div>
     </aside>
   );

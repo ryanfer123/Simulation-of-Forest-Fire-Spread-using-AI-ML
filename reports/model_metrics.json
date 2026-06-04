@@ -1,0 +1,107 @@
+{
+  "model": "XGBoost",
+  "best_params": {
+    "learning_rate": 0.1,
+    "max_depth": 5,
+    "min_child_weight": 3,
+    "n_estimators": 100
+  },
+  "decision_threshold": 0.9000000000000001,
+  "accuracy": 0.965454,
+  "precision": 0.252386,
+  "recall": 0.357895,
+  "f1_score": 0.29602,
+  "auc_roc": 0.907395,
+  "confusion_matrix": {
+    "true_positive": 238,
+    "false_positive": 705,
+    "true_negative": 31398,
+    "false_negative": 427
+  },
+  "train_samples": 49152,
+  "test_samples": 32768,
+  "train_positives": 1622,
+  "test_positives": 665,
+  "class_weights": {
+    "negative": 0.5171,
+    "positive": 15.1517
+  },
+  "feature_names": [
+    "norm_row",
+    "norm_col",
+    "fire_yesterday",
+    "fire_2days_ago",
+    "nb_fire_r1",
+    "nb_fire_r2",
+    "nb_fire_r3",
+    "brightness_yesterday",
+    "frp_yesterday",
+    "detection_count_yesterday"
+  ],
+  "region": "South/Central Asia (training), Uttarakhand focus",
+  "bounds": [
+    60.0,
+    5.0,
+    100.0,
+    40.0
+  ],
+  "grid_size": 128,
+  "date_range": [
+    "2026-05-28",
+    "2026-06-03"
+  ],
+  "dataset": "NASA FIRMS VIIRS (SUOMI NPP, 7-day)",
+  "cross_validation": {
+    "method": "TimeSeriesSplit",
+    "n_splits": 3
+  },
+  "feature_importances": {
+    "norm_row": 0.0209,
+    "norm_col": 0.0225,
+    "fire_yesterday": 0.0201,
+    "fire_2days_ago": 0.0584,
+    "nb_fire_r1": 0.2844,
+    "nb_fire_r2": 0.4948,
+    "nb_fire_r3": 0.0406,
+    "brightness_yesterday": 0.0097,
+    "frp_yesterday": 0.0363,
+    "detection_count_yesterday": 0.0123
+  },
+  "ablation_study": {
+    "full_model_auc": 0.907395,
+    "spatial": {
+      "auc_without": 0.83939,
+      "delta_auc": 0.068005,
+      "features_removed": [
+        "norm_row",
+        "norm_col"
+      ]
+    },
+    "temporal": {
+      "auc_without": 0.902651,
+      "delta_auc": 0.004744,
+      "features_removed": [
+        "fire_yesterday",
+        "fire_2days_ago"
+      ]
+    },
+    "neighbourhood": {
+      "auc_without": 0.926679,
+      "delta_auc": -0.019284,
+      "features_removed": [
+        "nb_fire_r1",
+        "nb_fire_r2",
+        "nb_fire_r3"
+      ]
+    },
+    "radiometric": {
+      "auc_without": 0.908738,
+      "delta_auc": -0.001343,
+      "features_removed": [
+        "brightness_yesterday",
+        "frp_yesterday",
+        "detection_count_yesterday"
+      ]
+    }
+  }
+}

@@ -1,274 +1,214 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
-export type MapLayer = "risk" | "historical" | "spread";
-
-interface FireZone {
-  id: string;
-  cx: number; cy: number;
-  rx: number; ry: number;
-  risk: "critical" | "high" | "medium" | "low";
-  label: string;
-  hectares: number;
+interface FirePoint {
+  lat: number;
+  lon: number;
+  bright_ti4: number;
+  frp: number;
+  confidence: string;
+  acq_date: string;
+  daynight: string;
 }
 
-interface HistoricalFire {
-  id: string;
-  points: string;
-  year: number;
-  hectares: number;
-  opacity: number;
+interface FireData {
+  total: number;
+  bounds: { minLon: number; minLat: number; maxLon: number; maxLat: number };
+  points: FirePoint[];
 }
 
-const FIRE_ZONES: FireZone[] = [
-  { id: "z1", cx: 210, cy: 160, rx: 55, ry: 40, risk: "critical", label: "Sierra Alta", hectares: 4820 },
-  { id: "z2", cx: 420, cy: 220, rx: 70, ry: 50, risk: "high", label: "Pico Rojo", hectares: 3140 },
-  { id: "z3", cx: 310, cy: 320, rx: 45, ry: 35, risk: "high", label: "Valle Seco", hectares: 2100 },
-  { id: "z4", cx: 560, cy: 160, rx: 40, ry: 30, risk: "medium", label: "Cerro Norte", hectares: 980 },
-  { id: "z5", cx: 150, cy: 330, rx: 35, ry: 28, risk: "medium", label: "Bosque Sur", hectares: 750 },
-  { id: "z6", cx: 490, cy: 340, rx: 30, ry: 22, risk: "low", label: "Llanura Este", hectares: 320 },
-  { id: "z7", cx: 620, cy: 300, rx: 35, ry: 25, risk: "low", label: "Monte Verde", hectares: 410 },
-  { id: "z8", cx: 350, cy: 420, rx: 50, ry: 35, risk: "medium", label: "Cañada Seca", hectares: 1250 },
-];
-
-const HISTORICAL_FIRES: HistoricalFire[] = [
-  { id: "h1", points: "80,120 160,100 200,150 180,220 100,230 60,180", year: 2019, hectares: 6200, opacity: 0.35 },
-  { id: "h2", points: "350,80 430,100 470,160 440,220 370,200 330,140", year: 2021, hectares: 8900, opacity: 0.30 },
-  { id: "h3", points: "480,250 550,230 600,280 580,360 500,370 460,310", year: 2022, hectares: 5100, opacity: 0.28 },
-  { id: "h4", points: "200,350 280,330 300,390 270,440 200,450 170,400", year: 2023, hectares: 3400, opacity: 0.32 },
-];
-
-const RISK_COLORS: Record<string, { fill: string; stroke: string; label: string }> = {
-  critical: { fill: "rgba(220,38,38,0.25)", stroke: "rgba(220,38,38,0.9)", label: "Critical" },
-  high:     { fill: "rgba(234,88,12,0.22)", stroke: "rgba(234,88,12,0.85)", label: "High" },
-  medium:   { fill: "rgba(234,179,8,0.20)", stroke: "rgba(234,179,8,0.80)", label: "Medium" },
-  low:      { fill: "rgba(34,197,94,0.18)", stroke: "rgba(34,197,94,0.75)", label: "Low" },
-};
-
-interface Props {
-  activeLayers: Set<MapLayer>;
-  simulationActive: boolean;
-  simulationStep: number;
+function frpToColor(frp: number): string {
+  if (frp > 15) return "#ef4444";
+  if (frp > 5) return "#f97316";
+  if (frp > 1) return "#eab308";
+  return "#22c55e";
 }
 
-export default function FireMap({ activeLayers, simulationActive, simulationStep }: Props) {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const [hoveredZone, setHoveredZone] = useState<FireZone | null>(null);
-  const [tooltip, setTooltip] = useState({ x: 0, y: 0 });
+function frpToRadius(frp: number): number {
+  return Math.max(3, Math.min(10, 3 + frp * 0.5));
+}
 
-  const spreadRings = simulationActive
-    ? Array.from({ length: Math.min(simulationStep, 8) }, (_, i) => ({
-        cx: 210,
-        cy: 160,
-        r: 60 + i * 22,
-        opacity: Math.max(0.05, 0.45 - i * 0.05),
-      }))
+export default function FireMap() {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const leafletMap = useRef<L.Map | null>(null);
+  const [fireData, setFireData] = useState<FireData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<string>("all");
+
+  // Fetch fire data from our API
+  useEffect(() => {
+    fetch("/api/fires")
+      .then((r) => r.json())
+      .then((data: FireData) => {
+        setFireData(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  // Get unique dates for the filter
+  const dates = fireData
+    ? [...new Set(fireData.points.map((p) => p.acq_date))].sort()
     : [];
 
-  const windAngle = 38;
+  // Filtered points
+  const visiblePoints =
+    fireData && selectedDate !== "all"
+      ? fireData.points.filter((p) => p.acq_date === selectedDate)
+      : fireData?.points ?? [];
+
+  // Initialise Leaflet map
+  useEffect(() => {
+    if (!mapRef.current || leafletMap.current) return;
+
+    const map = L.map(mapRef.current, {
+      center: [30.0, 79.0],
+      zoom: 7,
+      zoomControl: false,
+    });
+
+    // Dark satellite-style tiles
+    L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+      {
+        attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://osm.org/copyright">OSM</a>',
+        maxZoom: 18,
+      }
+    ).addTo(map);
+
+    L.control.zoom({ position: "bottomright" }).addTo(map);
+
+    leafletMap.current = map;
+
+    return () => {
+      map.remove();
+      leafletMap.current = null;
+    };
+  }, []);
+
+  // Draw fire markers whenever data or filter changes
+  useEffect(() => {
+    const map = leafletMap.current;
+    if (!map || !fireData) return;
+
+    // Clear existing markers
+    map.eachLayer((layer) => {
+      if (layer instanceof L.CircleMarker) map.removeLayer(layer);
+    });
+
+    // Add fire detection markers
+    visiblePoints.forEach((pt) => {
+      const marker = L.circleMarker([pt.lat, pt.lon], {
+        radius: frpToRadius(pt.frp),
+        fillColor: frpToColor(pt.frp),
+        color: frpToColor(pt.frp),
+        weight: 1,
+        opacity: 0.8,
+        fillOpacity: 0.6,
+      });
+
+      marker.bindPopup(
+        `<div style="font-family:monospace;font-size:11px;line-height:1.6">
+          <strong>Fire Detection</strong><br/>
+          Date: ${pt.acq_date}<br/>
+          Lat: ${pt.lat.toFixed(4)}, Lon: ${pt.lon.toFixed(4)}<br/>
+          Brightness: ${pt.bright_ti4.toFixed(1)} K<br/>
+          FRP: ${pt.frp.toFixed(2)} MW<br/>
+          Confidence: ${pt.confidence}<br/>
+          Day/Night: ${pt.daynight === "D" ? "Day" : "Night"}
+        </div>`
+      );
+
+      marker.addTo(map);
+    });
+  }, [fireData, visiblePoints]);
 
   return (
-    <div style={{
-      position: "relative",
-      width: "100%",
-      height: "100%",
-      overflow: "hidden",
-      borderRadius: "var(--radius)",
-      background: "#0a120e",
-    }}>
-      <svg
-        ref={svgRef}
-        viewBox="0 0 740 500"
-        style={{ width: "100%", height: "100%" }}
-        aria-label="Forest fire risk map"
-        role="img"
-      >
-        <defs>
-          <pattern id="forest" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-            <rect width="20" height="20" fill="#14261a" />
-            <circle cx="5" cy="5" r="3" fill="#1a3322" opacity="0.6" />
-            <circle cx="15" cy="12" r="2.5" fill="#182e1f" opacity="0.5" />
-            <circle cx="10" cy="17" r="2" fill="#1e3a26" opacity="0.4" />
-          </pattern>
-          <pattern id="dry" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
-            <rect width="16" height="16" fill="#2a2518" />
-            <line x1="0" y1="8" x2="16" y2="8" stroke="#3a3220" strokeWidth="0.5" opacity="0.4" />
-            <line x1="8" y1="0" x2="8" y2="16" stroke="#3a3220" strokeWidth="0.5" opacity="0.4" />
-          </pattern>
-          <radialGradient id="glowRed" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(220,38,38,0.6)" />
-            <stop offset="100%" stopColor="rgba(220,38,38,0)" />
-          </radialGradient>
-          <radialGradient id="glowOrange" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(234,88,12,0.5)" />
-            <stop offset="100%" stopColor="rgba(234,88,12,0)" />
-          </radialGradient>
-          <filter id="blur4"><feGaussianBlur stdDeviation="4" /></filter>
-          <filter id="blur8"><feGaussianBlur stdDeviation="8" /></filter>
-        </defs>
+    <div style={{ position: "relative", width: "100%", height: "100%", borderRadius: "var(--radius)", overflow: "hidden" }}>
+      {/* Map container */}
+      <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
 
-        {/* Base terrain */}
-        <rect width="740" height="500" fill="url(#forest)" />
-
-        {/* Elevation contour lines */}
-        {[50, 120, 200, 280, 360, 430].map((y, i) => (
-          <path
-            key={i}
-            d={`M0,${y} Q185,${y - 15 + i * 3} 370,${y + 10 - i * 2} Q555,${y - 8 + i * 4} 740,${y + 5}`}
-            fill="none"
-            stroke="#2a4a35"
-            strokeWidth="0.8"
-            opacity="0.4"
-          />
-        ))}
-
-        {/* Rivers */}
-        <path
-          d="M0,250 Q80,240 140,260 Q200,280 250,265 Q300,250 370,270 Q450,290 520,275 Q600,260 680,280 L740,275"
-          fill="none" stroke="#2563eb" strokeWidth="2.5" opacity="0.4"
-        />
-        <path
-          d="M300,0 Q310,80 290,160 Q270,240 285,320 Q300,400 310,500"
-          fill="none" stroke="#2563eb" strokeWidth="1.8" opacity="0.3"
-        />
-
-        {/* Roads */}
-        <path d="M0,380 L740,350" fill="none" stroke="#555" strokeWidth="2" strokeDasharray="8,4" opacity="0.4" />
-        <path d="M370,0 L360,500" fill="none" stroke="#555" strokeWidth="1.5" strokeDasharray="6,4" opacity="0.3" />
-
-        {/* Historical fire overlays */}
-        {activeLayers.has("historical") &&
-          HISTORICAL_FIRES.map((hf) => (
-            <g key={hf.id}>
-              <polygon
-                points={hf.points}
-                fill={`rgba(120,50,10,${hf.opacity})`}
-                stroke="rgba(160,60,10,0.6)"
-                strokeWidth="1.5"
-                strokeDasharray="4,3"
-              />
-              <text
-                x={hf.points.split(" ")[0].split(",")[0]}
-                y={Number(hf.points.split(" ")[0].split(",")[1]) - 6}
-                fontSize="9" fill="rgba(200,120,60,0.9)" fontFamily="monospace"
-              >
-                {hf.year} · {(hf.hectares / 1000).toFixed(1)}k ha
-              </text>
-            </g>
-          ))}
-
-        {/* Spread simulation rings */}
-        {activeLayers.has("spread") &&
-          spreadRings.map((ring, i) => (
-            <ellipse
-              key={i}
-              cx={ring.cx + i * 4} cy={ring.cy + i * 6}
-              rx={ring.r} ry={ring.r * 0.75}
-              fill={`rgba(220,38,38,${ring.opacity * 0.3})`}
-              stroke={`rgba(220,38,38,${ring.opacity})`}
-              strokeWidth="1.5"
-              filter="url(#blur4)"
-            />
-          ))}
-
-        {/* Risk zone glows */}
-        {activeLayers.has("risk") &&
-          FIRE_ZONES.filter((z) => z.risk === "critical" || z.risk === "high").map((zone) => (
-            <ellipse
-              key={`glow-${zone.id}`}
-              cx={zone.cx} cy={zone.cy}
-              rx={zone.rx + 30} ry={zone.ry + 22}
-              fill={zone.risk === "critical" ? "url(#glowRed)" : "url(#glowOrange)"}
-              filter="url(#blur8)"
-            />
-          ))}
-
-        {/* Risk zones */}
-        {activeLayers.has("risk") &&
-          FIRE_ZONES.map((zone) => {
-            const color = RISK_COLORS[zone.risk];
-            const isHovered = hoveredZone?.id === zone.id;
-            return (
-              <g
-                key={zone.id}
-                style={{ cursor: "pointer" }}
-                onMouseEnter={() => {
-                  setHoveredZone(zone);
-                  const svg = svgRef.current;
-                  if (svg) {
-                    const rect = svg.getBoundingClientRect();
-                    const scaleX = rect.width / 740;
-                    const scaleY = rect.height / 500;
-                    setTooltip({ x: zone.cx * scaleX, y: zone.cy * scaleY });
-                  }
-                }}
-                onMouseLeave={() => setHoveredZone(null)}
-              >
-                <ellipse
-                  cx={zone.cx} cy={zone.cy}
-                  rx={zone.rx + (isHovered ? 4 : 0)}
-                  ry={zone.ry + (isHovered ? 3 : 0)}
-                  fill={color.fill} stroke={color.stroke}
-                  strokeWidth={isHovered ? 2 : 1.5}
-                  style={{ transition: "all 0.15s" }}
-                />
-                {(zone.risk === "critical" || zone.risk === "high") && (
-                  <circle cx={zone.cx} cy={zone.cy} r={4} fill={color.stroke} opacity="0.9" />
-                )}
-                <text
-                  x={zone.cx} y={zone.cy - zone.ry - 5}
-                  textAnchor="middle" fontSize="9.5"
-                  fill={color.stroke} fontFamily="monospace" fontWeight="600"
-                >
-                  {zone.label}
-                </text>
-              </g>
-            );
-          })}
-
-        {/* Wind direction arrow */}
-        <g transform={`translate(680,50) rotate(${windAngle})`}>
-          <circle cx="0" cy="0" r="22" fill="#1a1f1e" stroke="#2a322e" strokeWidth="1" />
-          <polygon points="0,-14 5,6 0,2 -5,6" fill="var(--accent)" />
-          <text x="0" y="32" textAnchor="middle" fontSize="8" fill="#7a8580" fontFamily="monospace">WIND</text>
-          <text x="0" y="41" textAnchor="middle" fontSize="8" fill="#7a8580" fontFamily="monospace">18 km/h</text>
-        </g>
-
-        {/* Scale bar */}
-        <g transform="translate(20,470)">
-          <line x1="0" y1="0" x2="80" y2="0" stroke="#7a8580" strokeWidth="1.5" />
-          <line x1="0" y1="-4" x2="0" y2="4" stroke="#7a8580" strokeWidth="1.5" />
-          <line x1="80" y1="-4" x2="80" y2="4" stroke="#7a8580" strokeWidth="1.5" />
-          <text x="40" y="-6" textAnchor="middle" fontSize="8" fill="#7a8580" fontFamily="monospace">10 km</text>
-        </g>
-
-        <text x="720" y="494" textAnchor="end" fontSize="7.5" fill="#525b57" fontFamily="monospace">
-          40.42°N  3.69°W
-        </text>
-      </svg>
-
-      {/* Tooltip */}
-      {hoveredZone && (
-        <div className="map-tooltip" style={{ left: tooltip.x + 12, top: tooltip.y - 48 }}>
-          <div className="mono" style={{ fontWeight: 700, fontSize: 12, color: "var(--fg)" }}>{hoveredZone.label}</div>
-          <div className="flex-center gap-3" style={{ marginTop: 4 }}>
-            <span className="mono" style={{ fontSize: 10, color: RISK_COLORS[hoveredZone.risk].stroke, fontWeight: 600 }}>
-              {RISK_COLORS[hoveredZone.risk].label} Risk
-            </span>
-            <span className="mono" style={{ fontSize: 10, color: "var(--fg-muted)" }}>
-              {hoveredZone.hectares.toLocaleString()} ha
-            </span>
-          </div>
+      {/* Loading overlay */}
+      {loading && (
+        <div style={{
+          position: "absolute", inset: 0, display: "flex", alignItems: "center",
+          justifyContent: "center", background: "rgba(13,15,14,0.8)", zIndex: 1000,
+        }}>
+          <span className="mono" style={{ color: "var(--fg-muted)", fontSize: 12 }}>
+            Loading fire detections...
+          </span>
         </div>
       )}
 
-      {/* Border ring */}
+      {/* Date filter */}
+      {dates.length > 0 && (
+        <div style={{
+          position: "absolute", top: 12, left: 12, zIndex: 1000,
+          background: "rgba(21,25,24,0.9)", backdropFilter: "blur(8px)",
+          border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
+          padding: "8px 12px", display: "flex", alignItems: "center", gap: 8,
+        }}>
+          <span className="mono" style={{ fontSize: 9, color: "var(--fg-dim)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+            Date
+          </span>
+          <select
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="mono"
+            style={{
+              background: "var(--bg)", color: "var(--fg)", border: "1px solid var(--border)",
+              borderRadius: 4, padding: "3px 8px", fontSize: 11, cursor: "pointer",
+            }}
+          >
+            <option value="all">All dates ({fireData?.total ?? 0} pts)</option>
+            {dates.map((d) => (
+              <option key={d} value={d}>
+                {d} ({fireData!.points.filter((p) => p.acq_date === d).length} pts)
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* FRP Legend */}
       <div style={{
-        position: "absolute", inset: 0, pointerEvents: "none",
-        borderRadius: "var(--radius)",
-        boxShadow: "inset 0 0 0 1px rgba(42,50,46,0.4)",
-      }} />
+        position: "absolute", bottom: 12, left: 12, zIndex: 1000,
+        background: "rgba(21,25,24,0.9)", backdropFilter: "blur(8px)",
+        border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
+        padding: "8px 12px",
+      }}>
+        <p className="mono" style={{ fontSize: 8, color: "var(--fg-dim)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>
+          Fire Radiative Power
+        </p>
+        <div style={{ display: "flex", gap: 10 }}>
+          {[
+            { label: "> 15 MW", color: "#ef4444" },
+            { label: "5–15 MW", color: "#f97316" },
+            { label: "1–5 MW", color: "#eab308" },
+            { label: "< 1 MW", color: "#22c55e" },
+          ].map((item) => (
+            <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: item.color, display: "inline-block" }} />
+              <span className="mono" style={{ fontSize: 9, color: "var(--fg-muted)" }}>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Stats badge */}
+      <div style={{
+        position: "absolute", top: 12, right: 12, zIndex: 1000,
+        background: "rgba(21,25,24,0.9)", backdropFilter: "blur(8px)",
+        border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
+        padding: "8px 12px",
+      }}>
+        <span className="mono" style={{ fontSize: 10, color: "var(--fg)" }}>
+          {visiblePoints.length} <span style={{ color: "var(--fg-dim)" }}>detections</span>
+        </span>
+      </div>
     </div>
   );
 }
